@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dynamic SEE Test Design Optimizer</title>
+<meta name="description" content="Calculate optimal beam flux and firmware duty cycle for dynamic single-event effect testing.">
+<link rel="stylesheet" href="assets/style.css">
+<script>
+window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['$$','$$']] },
+                   options: { skipHtmlTags: ['script','noscript','style','textarea','pre'] } };
+</script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap">
+    <h1>Dynamic SEE Test Design Optimizer</h1>
+    <p class="tagline">Choose beam flux and firmware duty cycle to maximise verified data per hour of beam time.</p>
+  </div>
+</header>
+
+<main class="wrap">
+
+<!-- ============================== INTRO ============================== -->
+<section class="card intro">
+  <h2>What this tool answers</h2>
+  <p>Beam time is expensive and finite. In a dynamic single-event effect (SEE) test the device
+  under test must stay running, but a single-event functional interrupt (SEFI) destroys whatever
+  work was in progress and costs recovery time. Push the flux too high and the device spends the
+  campaign recovering instead of producing verifiable results. Push it too low and you pay for
+  beam you barely use.</p>
+  <p>This tool takes six measurable parameters and returns <strong>how much verified data your
+  current setup produces per hour</strong>, <strong>what flux would maximise that</strong>, and
+  <strong>how many hours of beam time you would save</strong>.</p>
+  <p class="note">Everything runs in your browser. Nothing is uploaded.</p>
+</section>
+
+<!-- ============================== CALCULATOR ============================== -->
+<section class="card">
+  <div class="section-head">
+    <h2>Calculator</h2>
+    <div class="preset-row">
+      <button type="button" class="btn-preset" data-preset="msp430">Load worked example (MSP430FR6989)</button>
+      <button type="button" class="btn-preset ghost" data-preset="blank">Reset</button>
+    </div>
+  </div>
+
+  <form id="calc" autocomplete="off">
+    <div class="grid">
+
+      <div class="field">
+        <label for="phi">Beam flux &phi;</label>
+        <div class="inputrow"><input type="number" id="phi" step="any" value="5.14e4"><span class="unit">ions&nbsp;cm<sup>&minus;2</sup>&nbsp;s<sup>&minus;1</sup></span></div>
+        <p class="help">Particle rate at the device. From facility dosimetry.</p>
+      </div>
+
+      <div class="field">
+        <label for="sigSefi">SEFI cross section &sigma;<sub>SEFI</sub></label>
+        <div class="inputrow"><input type="number" id="sigSefi" step="any" value="1.12e-5"><span class="unit">cm<sup>2</sup></span></div>
+        <p class="help">Device-level interrupt susceptibility at this LET. Measured as (interrupts observed) &divide; (fluence delivered), or read off a Weibull fit.</p>
+      </div>
+
+      <div class="field">
+        <label for="sigCirc">Observable cross section &sigma;<sub>circ</sub></label>
+        <div class="inputrow"><input type="number" id="sigCirc" step="any" value="6.24e-6"><span class="unit">cm<sup>2</sup></span></div>
+        <p class="help">Cross section for the effect you are actually trying to measure, in the circuit of interest. Sets how many events you collect; it does not affect the optimal flux.</p>
+      </div>
+
+      <div class="field">
+        <label for="W">Work cycle duration <em>W</em></label>
+        <div class="inputrow"><input type="number" id="W" step="any" value="0.072"><span class="unit">s</span></div>
+        <p class="help">One full compute-plus-telemetry iteration. An interrupt anywhere inside this window invalidates the whole cycle.</p>
+      </div>
+
+      <div class="field">
+        <label for="f">Targeting efficiency <em>f</em></label>
+        <div class="inputrow"><input type="number" id="f" step="any" min="0" max="1" value="0.323"><span class="unit">fraction (0&ndash;1)</span></div>
+        <p class="help">Fraction of the work cycle actually spent exercising the circuit of interest. This is the lever your firmware controls.</p>
+      </div>
+
+      <div class="field">
+        <label for="R">Recovery cost <em>R</em></label>
+        <div class="inputrow"><input type="number" id="R" step="any" value="2.49"><span class="unit">s</span></div>
+        <p class="help">Extra time lost per interrupt, beyond the destroyed cycle. Include manual intervention weighted by how often it is needed.</p>
+      </div>
+
+      <div class="field wide">
+        <label for="Ntarget">Target number of verified observations</label>
+        <div class="inputrow"><input type="number" id="Ntarget" step="any" value="100"><span class="unit">events</span></div>
+        <p class="help">How many confirmed events you need for adequate statistics. Used to convert rates into beam-time hours.</p>
+      </div>
+
+      <div class="field wide toggle-field">
+        <label class="toggle">
+          <input type="checkbox" id="exposed" checked>
+          <span><strong>The beam stays on during recovery</strong> (in-beam automatic resynchronisation)</span>
+        </label>
+        <p class="help">Leave this ticked unless the beam is genuinely paused, or the device shielded, for the
+        whole recovery sequence. When recovery happens under irradiation, a further interrupt during recovery
+        restarts it, so the <em>effective</em> recovery time is
+        \(R_{\text{eff}} = (e^{\lambda R}-1)/\lambda\) rather than \(R\). This grows very sharply with flux and
+        is the term that stops the model recommending arbitrarily hot beams. Unticking it is the optimistic
+        assumption and will overstate the flux you should run.</p>
+      </div>
+
+    </div>
+  </form>
+</section>
+
+<!-- ============================== RESULTS ============================== -->
+<section class="card" id="results">
+  <h2>Results</h2>
+
+  <div class="verdict" id="verdict"></div>
+
+  <h3>Where you are now</h3>
+  <div class="metrics" id="metricsNow"></div>
+
+  <h3>Recommended operating point</h3>
+  <div class="metrics" id="metricsOpt"></div>
+
+  <h3>Yield curve</h3>
+  <p class="help chartnote">Effective data rate against flux. The marker shows your current setting; the peak is the optimum.</p>
+  <canvas id="chart" width="900" height="340" aria-label="Yield versus flux curve"></canvas>
+
+  <div id="warnings"></div>
+</section>
+
+<!-- ============================== PERFORMANCE MEANING ============================== -->
+<section class="card">
+  <h2>What counts as good performance</h2>
+  <p>Two numbers decide whether a test design is well matched. Both are reported above.</p>
+
+  <h3>1. Interrupts per work cycle, <em>x</em></h3>
+  <p>This is the single most useful diagnostic. It says how many interrupts you expect during
+  one attempt at producing a result. It is dimensionless, and it has a natural target near
+  <strong>0.2 to 0.6</strong> for most recovery costs.</p>
+  <table class="bands">
+    <thead><tr><th>Value of <em>x</em></th><th>Meaning</th><th>What to do</th></tr></thead>
+    <tbody>
+      <tr class="band-low"><td>below 0.05</td><td>Under-driven. Almost every cycle completes, but you are buying more beam time than you need.</td><td>Raise flux, or lengthen the work cycle.</td></tr>
+      <tr class="band-good"><td>0.05 to 1.0</td><td>Well matched. You lose some cycles, but the throughput gain outweighs the loss.</td><td>Fine tune toward <em>u</em>* shown above.</td></tr>
+      <tr class="band-high"><td>above 1.0</td><td>Over-driven. Most cycles are destroyed before they finish and the campaign turns into a recovery loop.</td><td>Reduce flux, shorten the cycle, or make recovery cheaper.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>2. Throughput relative to achievable, &eta;<sub>rel</sub></h3>
+  <p>The percentage of the best possible data rate you are currently getting, holding everything
+  fixed except flux. <strong>Above 90&percnt;</strong> means there is little left on the table and you
+  should spend effort elsewhere. <strong>Below 50&percnt;</strong> means flux is genuinely mis-set and
+  correcting it is the cheapest available improvement.</p>
+
+  <h3>Improving the parts that flux cannot fix</h3>
+  <p>Optimal flux only rescues the third factor in the model. The other two are design choices:</p>
+  <ul>
+    <li><strong>Raise <em>f</em>.</strong> Every additional percent of the duty cycle spent in the
+    circuit of interest converts directly into an equal percent more data, with no downside from
+    interrupts. Throttling the computation clock relative to the communication clock is one way to
+    do this; it makes the compute phase occupy more of the cycle.</li>
+    <li><strong>Lower <em>R</em>.</strong> Automatic in-beam resynchronisation instead of a manual
+    reset with the beam paused is usually worth far more than any flux adjustment, because
+    <em>R</em> both reduces throughput and forces the optimal flux downward.</li>
+  </ul>
+</section>
+
+<!-- ============================== MODEL ============================== -->
+<section class="card">
+  <h2>The model</h2>
+  <p>Per work cycle, interrupts arrive as a Poisson process at rate \(\lambda=\phi\sigma_{\text{SEFI}}\).
+  A cycle survives with probability \(e^{-x}\), and costs \(W\) if it survives or \(W+R\) if it does
+  not. Dividing the fluence banked per cycle by the average cycle length gives the effective
+  fluence rate delivered to the circuit of interest:</p>
+
+  $$\dot{\Phi}_{\text{eff}}=\phi\,f\,\eta(x,\rho),\qquad
+    \eta(x,\rho)=\frac{e^{-x}}{1+\rho\left(1-e^{-x}\right)}$$
+
+  <p>with the two dimensionless groups</p>
+
+  $$x=\phi\,\sigma_{\text{SEFI}}\,W \quad\text{(interrupts per cycle)},\qquad
+    \rho=\frac{R}{W}\quad\text{(recovery cost ratio)}$$
+
+  <p>Raising flux multiplies the first factor but shrinks the third, so a maximum exists. Setting
+  the derivative with respect to \(\phi\) to zero gives</p>
+
+  $$(1-u^{*})(1+\rho)=\rho\,e^{-u^{*}},\qquad
+    \phi_{\text{opt}}=\frac{u^{*}(\rho)}{\sigma_{\text{SEFI}}\,W}$$
+
+  <p>The limits behave as expected. If recovery were free, \(\rho\to0\) and \(u^{*}\to1\): accept
+  about one interrupt per cycle. If recovery is very expensive, \(\rho\to\infty\) and
+  \(u^{*}\to0\): keep interrupts rare. Observation rate follows by multiplying the effective
+  fluence rate by the cross section of whatever you are measuring:
+  \(\;\text{events s}^{-1}=\dot{\Phi}_{\text{eff}}\,\sigma_{\text{circ}}\).</p>
+</section>
+
+<!-- ============================== SYMBOLS ============================== -->
+<section class="card">
+  <h2>Symbol reference</h2>
+  <table class="symbols">
+    <thead><tr><th>Symbol</th><th>Name</th><th>Units</th><th>Meaning and how to measure it</th></tr></thead>
+    <tbody>
+      <tr><td>\(\phi\)</td><td>Flux</td><td>ions cm<sup>&minus;2</sup> s<sup>&minus;1</sup></td>
+          <td>Particle rate at the device surface. Read from facility dosimetry.</td></tr>
+      <tr><td>\(\sigma_{\text{SEFI}}\)</td><td>SEFI cross section</td><td>cm<sup>2</sup></td>
+          <td>Device-level susceptibility to a functional interrupt. Count interrupts, divide by delivered fluence. Varies with LET, so use the value for the ion you are running.</td></tr>
+      <tr><td>\(\sigma_{\text{circ}}\)</td><td>Observable cross section</td><td>cm<sup>2</sup></td>
+          <td>Susceptibility of the specific effect you want to measure. Sets absolute event counts. Does not shift the optimal flux.</td></tr>
+      <tr><td>\(W\)</td><td>Work cycle duration</td><td>s</td>
+          <td>One complete compute-and-report iteration. Take the mean of your logged per-iteration times.</td></tr>
+      <tr><td>\(f\)</td><td>Targeting efficiency</td><td>dimensionless, 0&ndash;1</td>
+          <td>Fraction of the cycle spent in the circuit of interest. From per-iteration timing, e.g. compute time divided by total iteration time.</td></tr>
+      <tr><td>\(R\)</td><td>Recovery cost</td><td>s</td>
+          <td>Mean extra time lost per interrupt beyond the destroyed cycle. Weight automatic and manual recovery by how often each occurs.</td></tr>
+      <tr><td>\(x\)</td><td>Interrupts per cycle</td><td>dimensionless</td>
+          <td>\(\phi\sigma_{\text{SEFI}}W\). The main diagnostic; see the performance bands above.</td></tr>
+      <tr><td>\(\rho\)</td><td>Recovery cost ratio</td><td>dimensionless</td>
+          <td>\(R/W\). How many work cycles' worth of time one interrupt costs you.</td></tr>
+      <tr><td>\(\eta\)</td><td>Observation efficiency</td><td>dimensionless, 0&ndash;1</td>
+          <td>Fraction of the ideal data rate surviving interrupts and recovery.</td></tr>
+      <tr><td>\(u^{*}\)</td><td>Optimal interrupts per cycle</td><td>dimensionless</td>
+          <td>Value of \(x\) that maximises throughput, given \(\rho\).</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ============================== VALIDATION ============================== -->
+<section class="card">
+  <h2>Validation</h2>
+  <p>The targeting-efficiency term was tested against a heavy-ion campaign on the MSP430FR6989 at
+  Michigan State University's Facility for Rare Isotope Beams. Two firmware builds provide a
+  controlled comparison: identical storage placement, identical batch size, identical
+  communication clock, differing only in computation clock (16&nbsp;MHz against 1&nbsp;MHz), run at
+  the same LET and at fluxes within 3&percnt; of each other.</p>
+  <table class="validation">
+    <thead><tr><th></th><th>FRAM_1</th><th>FRAM_1_throttled</th></tr></thead>
+    <tbody>
+      <tr><td>Targeting efficiency <em>f</em>, from timing logs</td><td>0.045</td><td>0.323</td></tr>
+      <tr><td>Fluence per verified computation error</td><td>3.11&times;10<sup>6</sup></td><td>4.96&times;10<sup>5</sup></td></tr>
+      <tr><td>Implied \(\sigma_{\text{circ}}\)</td><td>7.21&times;10<sup>&minus;6</sup>&nbsp;cm<sup>2</sup></td><td>6.24&times;10<sup>&minus;6</sup>&nbsp;cm<sup>2</sup></td></tr>
+    </tbody>
+  </table>
+  <p>The model predicts a 7.25&times; efficiency ratio from duty cycle alone. The observed ratio was
+  6.28&times;, and the implied circuit cross sections agree to within 13&percnt;, which is the
+  behaviour expected if the difference is observation efficiency rather than underlying
+  susceptibility.</p>
+
+  <h3>What this evidence does and does not establish</h3>
+  <p>An independent audit of this comparison found three limitations that materially weaken it, and
+  they are stated here rather than buried:</p>
+  <ul>
+    <li><strong>The test has little statistical power.</strong> With 28 and 7 observed errors, the
+    exact 95&percnt; confidence interval on the ratio is 2.7 to 17.0. The predicted 7.25 sits inside
+    it, but so does 16, which is the clock-frequency ratio. The data therefore support the weaker
+    statement that computation-phase errors grow with time spent computing, and cannot by themselves
+    distinguish scaling with duty cycle from scaling with clock rate.</li>
+    <li><strong>The agreement depends on the event-selection rule.</strong> Restricting to errors
+    with no interrupt or persistence context gives 13&percnt; disagreement, but that cut removes
+    30&percnt; of one configuration's errors and 56&percnt; of the other's. Including persistent
+    errors gives 58&percnt; disagreement, and including all computation-phase errors gives
+    46&percnt;. The headline figure is the most favourable of several defensible choices.</li>
+    <li><strong>The confound is not separable in this pair.</strong> Duty cycle and clock rate move
+    together by construction, so the two explanations make no differing prediction here. One weak
+    argument favours the duty-cycle account: single-event transient capture generally becomes more
+    likely at higher clock frequency, which predicts fewer errors at 1&nbsp;MHz, the opposite of what
+    was seen. Separating them properly needs a configuration where duty cycle varies at fixed clock.</li>
+  </ul>
+  <p class="note">The model's structure is sound and its algebra has been independently verified.
+  Its <em>empirical</em> support at present is a single under-powered comparison, so the tool should
+  be used to rank candidate test designs rather than to certify a predicted yield.</p>
+</section>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <p>Companion tool to a RADECS&nbsp;2026 submission on dynamic SEE test design.
+       IU Center for Reliable and Trusted Electronics.</p>
+    <p class="note">Model output is a planning aid, not a substitute for a qualification test plan.</p>
+  </div>
+</footer>
+
+</main>
+<script src="assets/calculator.js"></script>
+</body>
+</html>
