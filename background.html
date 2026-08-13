@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Background | Dynamic SEE Test Design Optimizer</title>
+<meta name="description" content="Derivation, assumptions and limits of the effective-fluence yield model.">
+<link rel="stylesheet" href="assets/style.css">
+<script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['$$','$$']]},options:{skipHtmlTags:['script','noscript','style','textarea','pre']}};</script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap">
+    <h1>Background</h1>
+    <p class="tagline">Where the model comes from, what it assumes, and where it breaks.</p>
+  </div>
+</header>
+
+<nav class="site-nav"><ul>
+  <li><a href="index.html">Calculator</a></li>
+  <li><a href="batch.html">Batch size</a></li>
+  <li><a href="unknown.html">Unknown cross sections</a></li>
+  <li><a href="background.html" class="active">Background</a></li>
+  <li><a href="validation.html">Validation</a></li>
+</ul></nav>
+
+<main class="wrap">
+
+<section class="card">
+  <h2>Derivation</h2>
+  <p>The device repeats a work cycle of duration \(W\) containing computation and telemetry. A
+  fraction \(f\) of that time exercises the circuit of interest, so the fluence arriving at that
+  circuit during one cycle is \(\phi f W\).</p>
+
+  <p>Functional interrupts arrive as a Poisson process with rate
+  \(\lambda=\phi\sigma_{\text{SEFI}}\), so a cycle survives to completion with probability</p>
+  $$P_{\text{survive}}=e^{-\lambda W}=e^{-x},\qquad x\equiv\phi\,\sigma_{\text{SEFI}}\,W$$
+
+  <p>A cycle that survives costs \(W\). A cycle that does not costs \(W\) plus recovery, so the
+  expected duration of one cycle is \(W+(1-e^{-x})R_{\text{eff}}\). Renewal-reward gives the rate as
+  expected reward per cycle divided by expected cycle length:</p>
+  $$\dot{\Phi}_{\text{eff}}=\frac{\phi f W\,e^{-x}}{W+(1-e^{-x})R_{\text{eff}}}
+    =\phi\,f\,\underbrace{\frac{e^{-x}}{1+\rho(1-e^{-x})}}_{\eta},\qquad \rho\equiv\frac{R_{\text{eff}}}{W}$$
+
+  <p>So \(\eta\) is simply the probability a cycle survives, divided by the average cycle length in
+  units of \(W\). Three sanity checks: \(x=0\) gives \(\eta=1\) and you keep everything;
+  \(\rho=0\) gives \(\eta=e^{-x}\) and you only lose the failed cycles; large \(x\) drives
+  \(\eta\to0\) as the device thrashes.</p>
+
+  <h3>The optimum</h3>
+  <p>Since \(x\propto\phi\), raising flux multiplies the leading factor linearly but shrinks \(\eta\)
+  exponentially. Differentiating \(u\,\eta(u)\) and setting it to zero gives</p>
+  $$(1-u^{*})(1+\rho)=\rho\,e^{-u^{*}},\qquad \phi_{\text{opt}}=\frac{u^{*}(\rho)}{\sigma_{\text{SEFI}}W}$$
+  <p>Read \(u^{*}\) as the optimal number of interrupts to accept per cycle. The root is unique in
+  \((0,1)\) for every \(\rho>0\), and it is a maximum rather than an inflection. The limits behave
+  correctly: free recovery gives \(u^{*}\to1\), ruinous recovery gives \(u^{*}\to0\).</p>
+</section>
+
+<section class="card" id="recovery">
+  <h2>Recovery is not free from the beam</h2>
+  <p>The most consequential refinement is that \(R\) is not constant. If the beam stays on during
+  recovery, as it does for in-beam automatic resynchronisation, an interrupt <em>during</em> recovery
+  restarts it. For a restart-on-failure process of nominal length \(R\) under Poisson hazard
+  \(\lambda\), expected completion time is</p>
+  $$R_{\text{eff}}=\frac{e^{\lambda R}-1}{\lambda}$$
+  <p>which diverges sharply as \(\lambda R\) approaches unity. This term is what stops the model from
+  recommending arbitrarily hot beams, and it changes conclusions rather than refining them.</p>
+  <p>For the campaign on the <a href="validation.html">validation</a> page, treating recovery as
+  protected suggests raising flux 5.3&times; for a 1.36&times; gain. Accounting for exposure, nominal
+  recovery of 2.5&nbsp;s becomes 5.6&nbsp;s at the current flux and roughly 670&nbsp;s at the
+  "recommended" one, and the correct advice inverts to <em>lowering</em> flux by about 1.5&times;.
+  The same mechanism explains the sustained interrupt clusters seen in that campaign, which a
+  constant-\(R\) model simply cannot produce.</p>
+  <p class="note">If the beam is genuinely paused, or the device shielded, for the whole recovery
+  sequence, then \(R_{\text{eff}}=R\) and the closed form applies. That is the only case where the
+  optimistic setting is correct.</p>
+</section>
+
+<section class="card">
+  <h2>Relationship to checkpointing</h2>
+  <p>The structure is the accelerated-testing analogue of the optimal checkpoint-interval problem in
+  fault-tolerant computing. There, a long-running job checkpoints periodically; too-frequent
+  checkpoints waste time on overhead, too-rare ones lose more work per failure. Young's first-order
+  result and Daly's higher-order refinement solve that trade-off, and the same renewal-reward
+  reasoning underlies both.</p>
+  <p>One difference is worth stating. In computing, the failure rate is a property of the environment
+  and only the checkpoint interval can be chosen. A radiation test engineer also controls the failure
+  rate itself, through flux. That extra degree of freedom is why the optimisation here runs over
+  \(\phi\), while the classical result runs over the interval. The <a href="batch.html">batch size</a>
+  page recovers the classical direction: with flux fixed, choosing \(B\) is choosing how much work to
+  risk between commits.</p>
+  <ul>
+    <li>J. W. Young, "A first order approximation to the optimum checkpoint interval,"
+    <em>Communications of the ACM</em>, vol.&nbsp;17, no.&nbsp;9, pp.&nbsp;530&ndash;531, 1974.</li>
+    <li>J. T. Daly, "A higher order estimate of the optimum checkpoint interval for restart dumps,"
+    <em>Future Generation Computer Systems</em>, vol.&nbsp;22, no.&nbsp;3, pp.&nbsp;303&ndash;312, 2006.</li>
+    <li>A. Benoit <em>et al.</em>, "Checkpointing à la Young/Daly: an overview,"
+    <em>Proc. 14th Int. Conf. on Contemporary Computing</em>, pp.&nbsp;701&ndash;710, 2022.</li>
+  </ul>
+</section>
+
+<section class="card">
+  <h2>Assumptions, and where each one breaks</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Assumption</th><th>Breaks when</th><th>Consequence</th></tr></thead>
+    <tbody>
+      <tr><td>Interrupts are Poisson with constant rate</td>
+          <td>The device enters sustained clustering, or susceptibility depends on internal state</td>
+          <td>Optimal flux is overestimated. The \(R_{\text{eff}}\) term captures part of this but not all.</td></tr>
+      <tr><td>\(\sigma_{\text{SEFI}}\) is independent of flux</td>
+          <td>High flux changes the failure mode, for example by preventing recovery from completing</td>
+          <td>The model extrapolates past the point where its own inputs stop being constant. Step flux gradually and recount \(x\).</td></tr>
+      <tr><td>An interrupt destroys the whole cycle</td>
+          <td>Partial results remain usable, or work is committed incrementally</td>
+          <td>Model is pessimistic; true yield is higher, and larger batches are safer than predicted.</td></tr>
+      <tr><td>A failed cycle consumes its full duration \(W\)</td>
+          <td>The system aborts promptly on detection</td>
+          <td>Slightly pessimistic. Correction is about \(0.5(1-e^{-x})W\), around one percent near the optimum.</td></tr>
+      <tr><td>\(f\) is a property of the configuration</td>
+          <td>Duty cycle shifts with failure rate, for example through retries</td>
+          <td>\(f\) measured under heavy interrupt load is contaminated. Measure it at low flux.</td></tr>
+      <tr><td>Recovery cost \(R\) is a single number</td>
+          <td>Automatic and manual recovery differ by orders of magnitude</td>
+          <td>Use the occurrence-weighted mean, and check sensitivity; the optimum moves with \(R\).</td></tr>
+    </tbody>
+  </table></div>
+  <p class="note">The model is best used to rank candidate designs and to identify the direction and
+  approximate scale of an improvement. It is not a substitute for a qualification test plan, and it
+  should not be used to certify a predicted yield.</p>
+</section>
+
+<section class="card">
+  <h2>Where to go next</h2>
+  <div class="next-links">
+    <a class="next-link" href="index.html"><b>&larr; Calculator</b><span>Apply the model to your own parameters.</span></a>
+    <a class="next-link" href="validation.html"><b>Validation &rarr;</b><span>How the model fared against six measured configurations, and an independent audit.</span></a>
+  </div>
+</section>
+
+</main>
+
+<footer class="site-footer"><div class="wrap">
+  <p>Companion tool to a RADECS&nbsp;2026 submission on dynamic SEE test design. IU Center for Reliable and Trusted Electronics.</p>
+</div></footer>
+
+<script src="assets/model.js"></script>
+</body>
+</html>

@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Unknown cross sections | Dynamic SEE Test Design Optimizer</title>
+<meta name="description" content="Plan a dynamic SEE campaign when the SEFI and observable cross sections are not yet known.">
+<link rel="stylesheet" href="assets/style.css">
+<script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['$$','$$']]},options:{skipHtmlTags:['script','noscript','style','textarea','pre']}};</script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap">
+    <h1>Planning without known cross sections</h1>
+    <p class="tagline">You do not need &sigma; in advance. You need to count.</p>
+  </div>
+</header>
+
+<nav class="site-nav"><ul>
+  <li><a href="index.html">Calculator</a></li>
+  <li><a href="batch.html">Batch size</a></li>
+  <li><a href="unknown.html" class="active">Unknown cross sections</a></li>
+  <li><a href="background.html">Background</a></li>
+  <li><a href="validation.html">Validation</a></li>
+</ul></nav>
+
+<main class="wrap">
+
+<p class="page-intro">Both cross sections are usually unknown before the first campaign on a new
+part, which appears to make the model unusable. It does not, for two separate reasons.</p>
+
+<section class="card">
+  <h2>The observable cross section is not needed for the decision</h2>
+  <p>\(\sigma_{\text{circ}}\) scales how many events you collect, but it cancels out of the optimum
+  entirely: \(\phi_{\text{opt}}=u^{*}/(\sigma_{\text{SEFI}}W)\) does not contain it. A wrong guess
+  changes the predicted <em>duration</em> of your campaign, not the flux you should choose. Put in an
+  order-of-magnitude estimate, choose your operating point, and ignore the absolute event counts
+  until you have measured it.</p>
+</section>
+
+<section class="card">
+  <h2>The SEFI cross section does not need to be known, only counted</h2>
+  <p>The quantity that actually sets the operating point is \(x\), the number of interrupts per work
+  cycle. That is <strong>directly observable during the test</strong> without knowing
+  \(\sigma_{\text{SEFI}}\) at all: count interrupts, count work cycles attempted, divide.</p>
+  <ol>
+    <li>Start at a deliberately low flux, wherever you would have started conservatively anyway.</li>
+    <li>Run long enough to log at least 20 to 30 interrupts.</li>
+    <li>Compute \(x_{\text{obs}}\) and scale flux by \(x_{\text{target}}/x_{\text{obs}}\), in steps.</li>
+    <li>Recount after each step. If \(x\) stops tracking flux proportionally, you have left the regime
+    where \(\sigma_{\text{SEFI}}\) is flux-independent, and you should stop there.</li>
+  </ol>
+  <p>As a by-product you get \(\sigma_{\text{SEFI}}=x_{\text{obs}}/(\phi W)\) for free, which is a
+  publishable measurement in its own right.</p>
+
+  <h3>Pilot-run calculator</h3>
+  <form id="pilotForm" autocomplete="off">
+    <div class="grid">
+      <div class="field">
+        <label for="pInt">Interrupts observed</label>
+        <div class="inputrow"><input type="number" id="pInt" step="any" value="30"><span class="unit">count</span></div>
+        <p class="help">Functional interrupts logged during the pilot.</p>
+      </div>
+      <div class="field">
+        <label for="pCyc">Work cycles attempted</label>
+        <div class="inputrow"><input type="number" id="pCyc" step="any" value="1000"><span class="unit">count</span></div>
+        <p class="help">Iterations started, including those destroyed before completing.</p>
+      </div>
+      <div class="field">
+        <label for="pPhi">Pilot flux &phi;</label>
+        <div class="inputrow"><input type="number" id="pPhi" step="any" value="1e4"><span class="unit">ions&nbsp;cm<sup>&minus;2</sup>&nbsp;s<sup>&minus;1</sup></span></div>
+        <p class="help">Flux the pilot ran at.</p>
+      </div>
+      <div class="field">
+        <label for="pW">Work cycle duration <em>W</em></label>
+        <div class="inputrow"><input type="number" id="pW" step="any" value="72"><span class="unit">ms</span></div>
+        <p class="help">Only needed to back out \(\sigma_{\text{SEFI}}\); the flux recommendation does not use it.</p>
+      </div>
+      <div class="field wide">
+        <label for="pTarget">Target <em>x</em></label>
+        <div class="inputrow"><input type="number" id="pTarget" step="any" value="0.3"><span class="unit">interrupts per cycle</span></div>
+        <p class="help">See the robustness table below. 0.3 is the safe default.</p>
+      </div>
+    </div>
+  </form>
+  <div class="metrics" id="pilotOut"></div>
+  <div id="pilotWarn"></div>
+</section>
+
+<section class="card">
+  <h2>A safe target when you know nothing</h2>
+  <p>The yield curve is flat near its peak, so a fixed target for \(x\) does nearly as well as the
+  true optimum across a very wide range of recovery costs. Each cell is the fraction of best
+  achievable throughput obtained by targeting that fixed \(x\).</p>
+  <div class="table-wrap"><table class="bands">
+    <thead><tr><th>\(\rho=R_{\text{eff}}/W\)</th><th>true \(u^{*}\)</th><th>x = 0.1</th><th>x = 0.2</th><th>x = 0.3</th><th>x = 0.5</th><th>x = 1.0</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>0.77</td><td>36%</td><td>60%</td><td>76%</td><td>94%</td><td>97%</td></tr>
+      <tr><td>2.3</td><td>0.63</td><td>46%</td><td>71%</td><td>86%</td><td>98%</td><td>93%</td></tr>
+      <tr><td>5</td><td>0.49</td><td>60%</td><td>84%</td><td>95%</td><td>100%</td><td>87%</td></tr>
+      <tr><td>10</td><td>0.38</td><td>74%</td><td>93%</td><td>99%</td><td>98%</td><td>80%</td></tr>
+      <tr><td>35</td><td>0.22</td><td>94%</td><td>100%</td><td>99%</td><td>92%</td><td>71%</td></tr>
+      <tr><td>100</td><td>0.14</td><td>99%</td><td>99%</td><td>95%</td><td>87%</td><td>66%</td></tr>
+      <tr><td>300</td><td>0.08</td><td>100%</td><td>96%</td><td>92%</td><td>83%</td><td>63%</td></tr>
+    </tbody>
+  </table></div>
+  <p><strong>Target \(x\approx0.3\).</strong> It stays within roughly 15&percnt; of optimal over a
+  300-fold range in recovery cost, and requires no prior knowledge of either cross section. If
+  recovery is cheap, automatic and in-beam, drift toward 0.5. If it needs a person and a paused beam,
+  drift toward 0.15.</p>
+  <p class="note">Erring low is much safer than erring high. The curve falls gently below the optimum
+  and steeply above it, and the model's assumptions are the ones that break first at high flux.</p>
+</section>
+
+<section class="card">
+  <h2>If you must plan entirely on paper</h2>
+  <p>When even a pilot is not possible, bound the problem rather than guessing a point value.</p>
+  <ul>
+    <li><strong>Bracket \(\sigma_{\text{SEFI}}\) from published data on a similar part.</strong>
+    Functional-interrupt cross sections for commercial microcontrollers at saturation commonly fall
+    within about \(10^{-6}\) to \(10^{-4}\ \mathrm{cm^{2}}\). Plan at the pessimistic end, since the
+    penalty for over-driving is much steeper than for under-driving.</li>
+    <li><strong>Use a Weibull curve if one exists.</strong> \(\sigma_{\text{SEFI}}\) enters only as
+    \(\phi_{\text{opt}}\propto1/\sigma_{\text{SEFI}}\), so a published fit gives a flux-versus-LET
+    plan directly: high flux at low LET, backing off as the cross section saturates.</li>
+    <li><strong>Design the work cycle short.</strong> \(W\) is the one term entirely under your
+    control before the beam is on. A short cycle keeps \(x\) low whatever \(\sigma_{\text{SEFI}}\)
+    turns out to be, and can be lengthened later once you have measured it.</li>
+    <li><strong>Budget the first hour as measurement.</strong> Treat the pilot as part of the plan
+    rather than as overhead. One hour spent establishing \(x\) can reposition the remaining campaign
+    by a factor of several in yield.</li>
+  </ul>
+</section>
+
+<section class="card">
+  <h2>Where to go next</h2>
+  <div class="next-links">
+    <a class="next-link" href="index.html"><b>&larr; Calculator</b><span>Once you have measured \(\sigma_{\text{SEFI}}\), put it in and get the full picture.</span></a>
+    <a class="next-link" href="batch.html"><b>Batch size &rarr;</b><span>Keep the work cycle short while the cross section is still unknown.</span></a>
+    <a class="next-link" href="background.html"><b>Background &rarr;</b><span>Why the yield curve is asymmetric, and why erring low is safer.</span></a>
+  </div>
+</section>
+
+</main>
+
+<footer class="site-footer"><div class="wrap">
+  <p>Companion tool to a RADECS&nbsp;2026 submission on dynamic SEE test design. IU Center for Reliable and Trusted Electronics.</p>
+</div></footer>
+
+<script src="assets/model.js"></script>
+<script src="assets/pilot.js"></script>
+</body>
+</html>

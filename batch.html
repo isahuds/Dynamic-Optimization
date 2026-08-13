@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Batch size | Dynamic SEE Test Design Optimizer</title>
+<meta name="description" content="Find the batch size that maximises verified data per hour in a dynamic SEE test.">
+<link rel="stylesheet" href="assets/style.css">
+<script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['$$','$$']]},options:{skipHtmlTags:['script','noscript','style','textarea','pre']}};</script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap">
+    <h1>Batch size</h1>
+    <p class="tagline">The second lever on the operating point, after flux.</p>
+  </div>
+</header>
+
+<nav class="site-nav"><ul>
+  <li><a href="index.html">Calculator</a></li>
+  <li><a href="batch.html" class="active">Batch size</a></li>
+  <li><a href="unknown.html">Unknown cross sections</a></li>
+  <li><a href="background.html">Background</a></li>
+  <li><a href="validation.html">Validation</a></li>
+</ul></nav>
+
+<main class="wrap">
+
+<p class="page-intro">Flux is not the only way to change \(x\). Batching several results before
+reporting them lengthens the work cycle, and \(x=\phi\sigma_{\text{SEFI}}W\) grows with it. Because
+batching helps and hurts at the same time, an optimum exists.</p>
+
+<section class="card">
+  <h2>Why an optimum exists</h2>
+  <ul>
+    <li><strong>Larger batches raise \(f\).</strong> Fixed per-transfer overhead is amortised over more
+    results, so a greater share of the cycle is spent computing rather than talking. This is pure gain.</li>
+    <li><strong>Larger batches raise \(x\).</strong> The vulnerable window grows in proportion, so a
+    single interrupt destroys more work. Past \(x\approx1\) most batches never complete at all.</li>
+  </ul>
+  <p>The first effect saturates: once fixed overhead is negligible, \(f\) stops improving. The second
+  does not. So yield rises quickly, flattens, then falls away.</p>
+  $$W(B)=t_0+B\,t_s,\qquad f(B)=\frac{B\,w_c}{W(B)}$$
+  <p class="note">Flux, \(\sigma_{\text{SEFI}}\), \(\sigma_{\text{circ}}\) and \(R\) are shared with the
+  <a href="index.html">calculator</a>; changing them on either page keeps them in step.</p>
+</section>
+
+<section class="card">
+  <h2>Explore</h2>
+  <form id="batchForm" autocomplete="off">
+    <div class="grid">
+      <div class="field">
+        <label for="bt0">Fixed overhead per batch \(t_0\)</label>
+        <div class="inputrow"><input type="number" id="bt0" step="any" value="33.8"><span class="unit">ms</span></div>
+        <p class="help">Cost paid once per transfer regardless of batch size: handshake, setup, host turnaround.</p>
+      </div>
+      <div class="field">
+        <label for="bts">Per-sample cycle cost \(t_s\)</label>
+        <div class="inputrow"><input type="number" id="bts" step="any" value="8.18"><span class="unit">ms</span></div>
+        <p class="help">Total time each extra sample adds to the cycle: compute plus its share of transfer.</p>
+      </div>
+      <div class="field">
+        <label for="bwd">Per-sample compute time \(w_c\)</label>
+        <div class="inputrow"><input type="number" id="bwd" step="any" value="2.0"><span class="unit">ms</span></div>
+        <p class="help">The part of \(t_s\) actually spent in the circuit of interest. Cannot exceed \(t_s\).</p>
+      </div>
+      <div class="field">
+        <label for="phi">Beam flux &phi;</label>
+        <div class="inputrow"><input type="number" id="phi" step="any"><span class="unit">ions&nbsp;cm<sup>&minus;2</sup>&nbsp;s<sup>&minus;1</sup></span></div>
+        <p class="help">Shared with the calculator.</p>
+      </div>
+      <div class="field">
+        <label for="sigSefi">SEFI cross section &sigma;<sub>SEFI</sub></label>
+        <div class="inputrow"><input type="number" id="sigSefi" step="any"><span class="unit">cm<sup>2</sup></span></div>
+        <p class="help">Shared with the calculator.</p>
+      </div>
+      <div class="field">
+        <label for="R">Nominal recovery cost <em>R</em></label>
+        <div class="inputrow"><input type="number" id="R" step="any"><span class="unit">s</span></div>
+        <p class="help">Shared with the calculator.</p>
+      </div>
+      <div class="field">
+        <label for="sigCirc">Observable cross section &sigma;<sub>circ</sub></label>
+        <div class="inputrow"><input type="number" id="sigCirc" step="any"><span class="unit">cm<sup>2</sup></span></div>
+        <p class="help">Only used to convert the result into beam-time hours.</p>
+      </div>
+      <div class="field">
+        <label for="Ntarget">Target verified observations</label>
+        <div class="inputrow"><input type="number" id="Ntarget" step="any"><span class="unit">events</span></div>
+        <p class="help">Shared with the calculator.</p>
+      </div>
+      <div class="field wide toggle-field">
+        <label class="toggle">
+          <input type="checkbox" id="exposed" checked>
+          <span><strong>The beam stays on during recovery</strong></span>
+        </label>
+        <p class="help">Same assumption as on the calculator page. See <a href="background.html#recovery">background</a>.</p>
+      </div>
+    </div>
+  </form>
+
+  <div class="metrics" id="batchMetrics"></div>
+  <canvas id="batchChart" width="900" height="300" aria-label="Yield versus batch size"></canvas>
+  <div id="batchWarn"></div>
+  <h3>Across batch sizes</h3>
+  <div id="batchTable"></div>
+</section>
+
+<section class="card">
+  <h2>Reading it</h2>
+  <p>The curve is steep on the left and gentle on the right, so <strong>under-batching costs more than
+  mild over-batching</strong>, up to the point where \(x\) approaches 1. Reporting every result
+  individually is rarely optimal unless per-transfer overhead is negligible or interrupts are frequent.</p>
+  <p>Two practical notes. First, \(B^{*}\) moves with flux: raising flux shortens the batch you can
+  afford, because the vulnerable window has to shrink to keep \(x\) in range. Second, if even the best
+  batch size leaves \(x>1\), batching cannot save you and flux must come down first.</p>
+  <p>In the campaign on the <a href="validation.html">validation</a> page, the batch-200 builds sat at
+  \(x\approx2\) with 11&ndash;15&percnt; of batches surviving, and produced two verified computation
+  errors between them against 28 for the batch-1 build.</p>
+</section>
+
+<section class="card">
+  <h2>Where to go next</h2>
+  <div class="next-links">
+    <a class="next-link" href="index.html"><b>&larr; Calculator</b><span>Set flux, and see the beam-time consequences of your current design.</span></a>
+    <a class="next-link" href="unknown.html"><b>Unknown cross sections &rarr;</b><span>Choose a batch size before you know \(\sigma_{\text{SEFI}}\).</span></a>
+    <a class="next-link" href="validation.html"><b>Validation &rarr;</b><span>The measured batch sweep, from \(B=1\) to \(B=200\).</span></a>
+  </div>
+</section>
+
+</main>
+
+<footer class="site-footer"><div class="wrap">
+  <p>Companion tool to a RADECS&nbsp;2026 submission on dynamic SEE test design. IU Center for Reliable and Trusted Electronics.</p>
+</div></footer>
+
+<script src="assets/model.js"></script>
+<script src="assets/batch.js"></script>
+</body>
+</html>

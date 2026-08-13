@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Validation | Dynamic SEE Test Design Optimizer</title>
+<meta name="description" content="Case-study data from an MSP430FR6989 heavy-ion campaign, plus an independent audit of the model.">
+<link rel="stylesheet" href="assets/style.css">
+<script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['$$','$$']]},options:{skipHtmlTags:['script','noscript','style','textarea','pre']}};</script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap">
+    <h1>Validation</h1>
+    <p class="tagline">Six measured configurations, and an independent audit that found a real error.</p>
+  </div>
+</header>
+
+<nav class="site-nav"><ul>
+  <li><a href="index.html">Calculator</a></li>
+  <li><a href="batch.html">Batch size</a></li>
+  <li><a href="unknown.html">Unknown cross sections</a></li>
+  <li><a href="background.html">Background</a></li>
+  <li><a href="validation.html" class="active">Validation</a></li>
+</ul></nav>
+
+<main class="wrap">
+
+<p class="page-intro">Data are from a heavy-ion campaign on the MSP430FR6989 at Michigan State
+University's Facility for Rare Isotope Beams. Six usable firmware builds ran at the same LET and at
+fluxes within a few percent of each other, which makes them directly comparable. Values below are
+measured, not fitted.</p>
+
+<section class="card">
+  <h2>The campaign</h2>
+  <div class="table-wrap"><table class="validation casestudy">
+    <thead><tr>
+      <th>Configuration</th><th>B</th><th>\(W\) (ms)</th><th>\(f\)</th>
+      <th>\(\sigma_{\text{SEFI}}\) (cm<sup>2</sup>)</th><th>\(x\)</th><th>cycles surviving</th>
+      <th>verified errors</th>
+    </tr></thead>
+    <tbody>
+      <tr><td>FRAM_1_throttled</td><td>1</td><td>72</td><td>0.323</td><td>1.12&times;10<sup>&minus;5</sup></td><td>0.042</td><td>95.9%</td><td>28</td></tr>
+      <tr><td>FRAM_1</td><td>1</td><td>42</td><td>0.045</td><td>8.27&times;10<sup>&minus;6</sup></td><td>0.018</td><td>98.2%</td><td>7</td></tr>
+      <tr><td>SRAM_1</td><td>1</td><td>36</td><td>0.048</td><td>6.33&times;10<sup>&minus;6</sup></td><td>0.010</td><td>99.0%</td><td>7</td></tr>
+      <tr><td>FRAM_50</td><td>50</td><td>443</td><td>0.235</td><td>7.98&times;10<sup>&minus;6</sup></td><td>0.167</td><td>84.6%</td><td>0</td></tr>
+      <tr class="bad-row"><td>SRAM_ctrl_200</td><td>200</td><td>2713</td><td>0.134</td><td>1.57&times;10<sup>&minus;5</sup></td><td>2.204</td><td>11.0%</td><td>2</td></tr>
+      <tr class="bad-row"><td>FRAM_200</td><td>200</td><td>2905</td><td>0.140</td><td>1.34&times;10<sup>&minus;5</sup></td><td>1.880</td><td>15.3%</td><td>0</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section class="card">
+  <h2>1. Batch size, the widest test</h2>
+  <p>The all-FRAM batch series spans two orders of magnitude in \(x\) at essentially fixed flux, which
+  makes it the most demanding test available in this campaign.</p>
+  <div class="table-wrap"><table class="casestudy">
+    <thead><tr><th>Build</th><th>B</th><th>\(W\)</th><th>\(x\)</th><th>cycles surviving</th><th>verified errors</th></tr></thead>
+    <tbody>
+      <tr><td>FRAM_1</td><td>1</td><td>42 ms</td><td>0.018</td><td>98.2%</td><td>7</td></tr>
+      <tr><td>FRAM_50</td><td>50</td><td>443 ms</td><td>0.167</td><td>84.6%</td><td>0</td></tr>
+      <tr class="bad-row"><td>FRAM_200</td><td>200</td><td>2905 ms</td><td>1.880</td><td>15.3%</td><td>0</td></tr>
+    </tbody>
+  </table></div>
+  <p>The work cycle grows about seventyfold from \(B=1\) to \(B=200\), so \(x\) crosses unity and
+  survival collapses. Both 200-batch builds sit near two expected interrupts per attempted batch, and
+  between them produced two verified computation errors across the whole campaign against 28 for the
+  batch-1 throttled build. The original analysis attributed this to long telemetry intervals; the
+  model reaches the same conclusion quantitatively, as a direct consequence of \(W\).</p>
+  <p>Fitted to the \(B=1\) and \(B=50\) points, the batch model puts the optimum near \(B\approx40\)
+  for this campaign. At that setting \(B=1\) returns about a quarter of the achievable rate, \(B=50\)
+  is within one percent of best, and \(B=200\) falls away sharply. The measured \(W\) at \(B=200\) was
+  also about 70&percnt; longer than linear extrapolation predicts, itself consistent with failed
+  batches being retried.</p>
+</section>
+
+<section class="card">
+  <h2>2. Targeting efficiency, the controlled pair</h2>
+  <p>FRAM_1 and FRAM_1_throttled use identical storage placement, batch size and communication clock.
+  They differ only in computation clock, 16&nbsp;MHz against 1&nbsp;MHz. The model predicts that
+  computation-phase error rate scales as \(f\,\sigma_{\text{circ}}\), so fluence-per-error multiplied
+  by \(f\) should match across the pair.</p>
+  <div class="table-wrap"><table class="validation">
+    <thead><tr><th></th><th>FRAM_1</th><th>FRAM_1_throttled</th></tr></thead>
+    <tbody>
+      <tr><td>Targeting efficiency <em>f</em></td><td>0.045</td><td>0.323</td></tr>
+      <tr><td>Fluence per verified error</td><td>3.11&times;10<sup>6</sup></td><td>4.96&times;10<sup>5</sup></td></tr>
+      <tr><td>Implied \(\sigma_{\text{circ}}\)</td><td>7.21&times;10<sup>&minus;6</sup>&nbsp;cm<sup>2</sup></td><td>6.24&times;10<sup>&minus;6</sup>&nbsp;cm<sup>2</sup></td></tr>
+    </tbody>
+  </table></div>
+  <p>Predicted ratio 7.25&times; from duty cycle alone, observed 6.28&times;, implied cross sections
+  agreeing within 13&percnt;. That is the expected behaviour if the difference is observation
+  efficiency rather than underlying susceptibility.</p>
+
+  <h3>What this evidence does not establish</h3>
+  <ul>
+    <li><strong>Little statistical power.</strong> With 28 and 7 observed errors the exact 95&percnt;
+    interval on the ratio is 2.7 to 17.0. The predicted 7.25 sits inside it, but so does 16, the clock
+    ratio. The data support the weaker claim that computation-phase errors grow with time spent
+    computing, and cannot separate duty-cycle scaling from clock-rate scaling.</li>
+    <li><strong>Sensitive to event selection.</strong> Restricting to errors with no interrupt or
+    persistence context gives 13&percnt; disagreement, but that cut removes 30&percnt; of one build's
+    errors and 56&percnt; of the other's. Including persistent errors gives 58&percnt;; including all
+    computation-phase errors gives 46&percnt;. The headline is the most favourable of several
+    defensible choices.</li>
+    <li><strong>Confound not separable here.</strong> Duty cycle and clock rate move together by
+    construction. One weak argument favours the duty-cycle account: single-event transient capture
+    generally becomes more likely at higher clock frequency, predicting fewer errors at 1&nbsp;MHz,
+    the opposite of what was seen. Separating them needs \(f\) varying at fixed clock.</li>
+  </ul>
+</section>
+
+<section class="card">
+  <h2>3. SRAM_1 separates susceptibility from observation efficiency</h2>
+  <p>SRAM_1 has almost the same \(f\) as FRAM_1, 0.048 against 0.045, and a slightly lower
+  \(\sigma_{\text{SEFI}}\). If observation efficiency were the whole story they should collect errors
+  at similar rates. They do not: SRAM_1's implied \(\sigma_{\text{circ}}\) is
+  3.68&times;10<sup>&minus;5</sup>&nbsp;cm<sup>2</sup>, about five times the FRAM value. Because
+  SRAM_1 relocates input, output and control storage into volatile SRAM rather than merely changing
+  timing, that residual is the expected signature of genuinely higher storage susceptibility.</p>
+  <p>Separating \(f\) from \(\sigma_{\text{circ}}\) is what makes the distinction visible; a raw
+  error-rate comparison would have confounded them. With seven observed errors from a single run this
+  is suggestive rather than established.</p>
+</section>
+
+<section class="card">
+  <h2>4. An anomaly the model does not explain</h2>
+  <p>FRAM_50 sits at \(x=0.167\), comfortably the best-placed configuration in the campaign, with
+  85&percnt; of cycles surviving and a healthy \(f=0.235\). On the fitted cross section it should have
+  produced roughly fifteen verified errors. It produced none.</p>
+  <p>That deficit is far too large to be chance, so it points at the observation and verification chain
+  for this configuration rather than at the device. It is recorded here as an open discrepancy rather
+  than smoothed over. It also illustrates a secondary use of the model: a large shortfall against
+  predicted yield is a signal that something in the measurement path is failing silently.</p>
+</section>
+
+<section class="card">
+  <h2>5. Independent audit of the model itself</h2>
+  <p>A separate skeptical audit was run against the derivation and the validation, instructed to find
+  errors rather than confirm them.</p>
+
+  <h3>Confirmed correct</h3>
+  <ul>
+    <li>The renewal-reward derivation. Expected cycle length \(W+(1-e^{-x})R\) with reward
+    \(e^{-x}\phi f W\) gives exactly the published expression.</li>
+    <li>The optimum. The derivative's numerator is algebraically identical to
+    \((1-u)(1+\rho)=\rho e^{-u}\); the root is unique in \((0,1)\) for all \(\rho>0\) and is a global
+    maximum, verified against grid search over \(\rho\) from \(10^{-6}\) to \(10^{8}\).</li>
+    <li>Non-circularity of the validation. Fluence-per-error uses all-phase fluence, so multiplying by
+    \(f\) is legitimate rather than double-counting.</li>
+  </ul>
+
+  <h3>Found wrong, and corrected</h3>
+  <p>The original model treated recovery cost as constant, which produced a recommendation to raise
+  flux 5.3&times;. Recovery under an active beam is interruptible, giving
+  \(R_{\text{eff}}=(e^{\lambda R}-1)/\lambda\). Nominal 2.5&nbsp;s becomes 5.6&nbsp;s at the campaign
+  flux and roughly 670&nbsp;s at the originally recommended one, at which point recovery cannot
+  statistically complete. <strong>The correct advice inverts to lowering flux by about
+  1.5&times;.</strong> The tool now defaults to the exposed-recovery assumption, and the mechanism also
+  explains the campaign's own sustained interrupt clusters.</p>
+
+  <h3>Open items</h3>
+  <ul>
+    <li>Fluence normalisations are mixed between sources; measured interrupts per cycle (0.0348) and
+    modelled \(x\) (0.0416) differ by 20&percnt;. Measuring \(x\) directly is preferable.</li>
+    <li>\(W\) in the reference implementation is pooled across all LETs, 72&nbsp;ms against 84.6&nbsp;ms
+    for this LET alone.</li>
+    <li>The recovery cost of 2.49&nbsp;s is not directly traceable to the logs; logged resynchronisation
+    per interrupt is 0.37&nbsp;s. The conclusion shifts with this value.</li>
+  </ul>
+  <p class="note">The model's structure and algebra are independently verified. Its <em>empirical</em>
+  support is one wide but coarse batch sweep plus one under-powered controlled pair. Use the tool to
+  rank candidate designs, not to certify a predicted yield.</p>
+</section>
+
+<section class="card">
+  <h2>Where to go next</h2>
+  <div class="next-links">
+    <a class="next-link" href="index.html"><b>&larr; Calculator</b><span>Apply the model to your own parameters.</span></a>
+    <a class="next-link" href="background.html"><b>Background &rarr;</b><span>The derivation, and the assumption table behind these caveats.</span></a>
+  </div>
+</section>
+
+</main>
+
+<footer class="site-footer"><div class="wrap">
+  <p>Companion tool to a RADECS&nbsp;2026 submission on dynamic SEE test design. IU Center for Reliable and Trusted Electronics.</p>
+</div></footer>
+
+<script src="assets/model.js"></script>
+</body>
+</html>
