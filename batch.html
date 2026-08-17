@@ -109,6 +109,32 @@ batching helps and hurts at the same time, an optimum exists.</p>
 </section>
 
 <section class="card">
+  <h2>Optimal batch size for a chosen recovery time</h2>
+  <p>The explorer above lets you shape the batch-cost model by hand. This second check instead uses the
+  work cycle measured directly on the campaign's FRAM batch sweep, fitted from the runs at \(B=50\) and
+  \(B=200\):</p>
+  $$W(B) = 13.35 + 4.053\,B \quad \text{ms}$$
+  <p>A longer batch is more likely to be interrupted, and under an exposed recovery the recovery that
+  follows is itself more likely to be interrupted, so raising \(B\) is penalised twice. Set a recovery
+  time below to see where that trade puts the optimum, and how close the campaign's actual choice of
+  \(B=39\) came to it.</p>
+  <form id="optBForm" autocomplete="off">
+    <div class="grid">
+      <div class="field">
+        <label for="optR">Recovery time <em>R</em></label>
+        <div class="inputrow"><input type="number" id="optR" step="any" value="0.165"><span class="unit">s</span></div>
+        <p class="help">Nominal recovery cost under an exposed, beam-on recovery. 0.165&nbsp;s is the
+        campaign's measured median.</p>
+      </div>
+    </div>
+  </form>
+  <div class="metrics" id="optBMetrics"></div>
+  <p class="note">This uses a fixed reference flux and \(\sigma_{\text{SEFI}}\) for the FRAM batch-sweep
+  configuration the fit above is drawn from, not the shared fields in the explorer above. Only \(R\)
+  is varied here.</p>
+</section>
+
+<section class="card">
   <h2>Reading it</h2>
   <p>The curve is steep on the left and gentle on the right, so <strong>under-batching costs more than
   mild over-batching</strong>, up to the point where \(x\) approaches 1. Reporting every result
@@ -138,5 +164,44 @@ batching helps and hurts at the same time, an optimum exists.</p>
 
 <script src="assets/model.js"></script>
 <script src="assets/batch.js"></script>
+<script>
+(function () {
+  "use strict";
+  var S = window.SEE;
+  // Reference operating point for the measured work-cycle fit above: flux and sigma_SEFI for the
+  // FRAM batch-sweep configuration (sigma_SEFI = 7.98e-6 cm^2 is the FRAM_50 value on the validation
+  // page). Fixed on purpose, independent of the shared phi/sigSefi fields in the explorer above,
+  // which drive a different, hand-set cost model.
+  var REF = { W0: 13.35 / 1000, wPer: 4.053 / 1000, phi: 4.8966e4, sigSefi: 7.98e-6, exposed: true };
+  var ACTUAL_B = 39;
+
+  function update() {
+    var el = document.getElementById("optR");
+    var out = document.getElementById("optBMetrics");
+    if (!el || !out) return;
+    var R = parseFloat(el.value);
+    var bad = !isFinite(R) || R <= 0;
+    el.classList.toggle("invalid", bad);
+    if (bad) { out.innerHTML = '<p class="help">Enter a positive recovery time.</p>'; return; }
+
+    var p = { W0: REF.W0, wPer: REF.wPer, phi: REF.phi, sigSefi: REF.sigSefi, R: R, exposed: REF.exposed };
+    var opt = S.optimalB(p, 512);
+    var yActual = S.batchYield(ACTUAL_B, p);
+    var frac = opt.yield > 0 ? yActual / opt.yield : 0;
+
+    out.innerHTML =
+      S.metric("Optimal batch size B*", String(opt.B), "", "at R = " + R + " s", true) +
+      S.metric("Yield at B*", opt.yield.toFixed(1), " vec/s", "verified vectors per second") +
+      S.metric("Yield at B = " + ACTUAL_B, S.pct(frac, 1), "", "of the optimum at this R");
+  }
+
+  document.addEventListener("DOMContentLoaded", function () {
+    var el = document.getElementById("optR");
+    el.addEventListener("input", update);
+    el.addEventListener("change", update);
+    update();
+  });
+})();
+</script>
 </body>
 </html>

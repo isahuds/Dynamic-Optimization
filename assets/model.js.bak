@@ -49,54 +49,6 @@
   }
 
   // Closed-form optimum for constant rho: (1-u)(1+rho) = rho*exp(-u).
-  /* ---------------------------------------------------------------------
-   * BATCH SIZE AS A SECOND DECISION VARIABLE.
-   *
-   * Added 2026-08-14. An audit against the literature found that the paper and
-   * this tool both CLAIMED telemetry batch size as a jointly optimised lever
-   * while the equations contained no such variable: B entered only implicitly
-   * through W and f, and nothing differentiated with respect to it. The claim
-   * is now earned rather than asserted.
-   *
-   * The work cycle grows with batch size. Fitted to the measured campaign
-   * cycles at LET 7.9 (B = 50 and 200):
-   *
-   *     W(B) = W0 + w*B,   W0 ~ 13.4 ms fixed,  w ~ 4.05 ms per vector
-   *
-   * so the cycle is NOT overhead-dominated: B = 4 already doubles it. Per
-   * completed cycle the device yields B verified vectors, but a longer cycle
-   * raises x = phi*sigma*W(B) and so lowers the survival probability e^-x.
-   * That trade has an interior optimum:
-   *
-   *     yield(B) = B * e^-x / ( W(B) + Reff*(1 - e^-x) )   vectors per second
-   *
-   * Reff is the interruptible-recovery time, so raising B is penalised twice
-   * under an exposed recovery: a longer cycle is likelier to be hit, and the
-   * recovery that follows is itself likelier to be hit.
-   *
-   * There is no closed form here either; the optimum is found by scanning,
-   * which is honest and cheap for an integer decision variable.
-   * ------------------------------------------------------------------- */
-  function batchYield(B, p) {
-    var W = p.W0 + p.wPer * B;
-    var lam = p.phi * p.sigSefi;
-    var x = lam * W;
-    var s = Math.exp(-x);
-    var Re = effectiveR(p.phi, p.sigSefi, p.R, p.exposed);
-    if (!isFinite(Re)) return 0;
-    var denom = W + Re * (1 - s);
-    return denom > 0 ? (B * s) / denom : 0;
-  }
-
-  function optimalB(p, bMax) {
-    var hi = bMax || 512, best = 1, bestY = -1;
-    for (var B = 1; B <= hi; B++) {
-      var y = batchYield(B, p);
-      if (y > bestY) { bestY = y; best = B; }
-    }
-    return { B: best, yield: bestY };
-  }
-
   function optimalU(rho) {
     if (!isFinite(rho) || rho <= 0) return 1;
     var gap = function (u) { return (1 - u) * (1 + rho) - rho * Math.exp(-u); };
@@ -174,15 +126,9 @@
   // Parameters shared across tool pages, persisted so a value entered on one
   // page is still there on the next.
   var STORE = "see-optimizer-v1";
-  // W0 and wPer are the two terms of the batch work model W(B) = W0 + wPer*B,
-  // fitted to the measured LET 7.9 cycles at B = 50 and B = 200. They were
-  // missing here while batchYield already referenced them, so batchYield
-  // evaluated W as NaN, its denominator test failed, and it returned 0 for
-  // every B. optimalB then reported B = 1 with yield 0 for any input.
   var DEFAULTS = {
     phi: 5.14e4, sigSefi: 1.12e-5, sigCirc: 6.24e-6,
-    W: 0.072, W0: 0.01335, wPer: 0.004053,
-    f: 0.323, R: 2.49, Ntarget: 100, exposed: true
+    W: 0.072, f: 0.323, R: 2.49, Ntarget: 100, exposed: true
   };
 
   function load() {
@@ -325,9 +271,7 @@
 
   global.SEE = {
     eta: eta, shape: shape, effectiveR: effectiveR, rate: rate,
-    optimalU: optimalU,
-    batchYield: batchYield,
-    optimalB: optimalB, optimalPhi: optimalPhi,
+    optimalU: optimalU, optimalPhi: optimalPhi,
     sci: sci, sup: sup, pct: pct, dur: dur, metric: metric, warnBox: warnBox,
     load: load, save: save, bindInputs: bindInputs, drawCurve: drawCurve,
     DEFAULTS: DEFAULTS

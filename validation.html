@@ -38,18 +38,56 @@ measured, not fitted.</p>
   <div class="table-wrap"><table class="validation casestudy">
     <thead><tr>
       <th>Configuration</th><th>B</th><th>\(W\) (ms)</th><th>\(f\)</th>
-      <th>\(\sigma_{\text{SEFI}}\) (cm<sup>2</sup>)</th><th>\(x\)</th><th>cycles surviving</th>
-      <th>verified errors</th>
+      <th>\(\sigma_{\text{SEFI}}\) (cm<sup>2</sup>), 95&percnt; interval</th>
+      <th>\(x\), 95&percnt; interval</th><th>cycles surviving</th><th>verified errors</th>
     </tr></thead>
     <tbody>
-      <tr><td>FRAM_1_throttled</td><td>1</td><td>72</td><td>0.323</td><td>1.12&times;10<sup>&minus;5</sup></td><td>0.042</td><td>95.9%</td><td>28</td></tr>
-      <tr><td>FRAM_1</td><td>1</td><td>42</td><td>0.045</td><td>8.27&times;10<sup>&minus;6</sup></td><td>0.018</td><td>98.2%</td><td>7</td></tr>
-      <tr><td>SRAM_1</td><td>1</td><td>36</td><td>0.048</td><td>6.33&times;10<sup>&minus;6</sup></td><td>0.010</td><td>99.0%</td><td>7</td></tr>
-      <tr><td>FRAM_50</td><td>50</td><td>443</td><td>0.235</td><td>7.98&times;10<sup>&minus;6</sup></td><td>0.167</td><td>84.6%</td><td>0</td></tr>
-      <tr class="bad-row"><td>SRAM_ctrl_200</td><td>200</td><td>2713</td><td>0.134</td><td>1.57&times;10<sup>&minus;5</sup></td><td>2.204</td><td>11.0%</td><td>2</td></tr>
-      <tr class="bad-row"><td>FRAM_200</td><td>200</td><td>2905</td><td>0.140</td><td>1.34&times;10<sup>&minus;5</sup></td><td>1.880</td><td>15.3%</td><td>0</td></tr>
+      <tr><td>FRAM_1_throttled</td><td>1</td><td>72</td><td>0.323</td>
+          <td>1.12 [0.95&ndash;1.32]&times;10<sup>&minus;5</sup></td><td>0.042 [0.035&ndash;0.049]</td><td>95.9%</td><td>28</td></tr>
+      <tr><td>FRAM_1</td><td>1</td><td>42</td><td>0.045</td>
+          <td>8.27 [7.10&ndash;9.57]&times;10<sup>&minus;6</sup></td><td>0.018 [0.016&ndash;0.021]</td><td>98.2%</td><td>7</td></tr>
+      <tr><td>SRAM_1</td><td>1</td><td>36</td><td>0.048</td>
+          <td>6.33 [4.10&ndash;9.35]&times;10<sup>&minus;6</sup></td><td>0.010 [0.007&ndash;0.015]</td><td>99.0%</td><td>7</td></tr>
+      <tr><td>FRAM_50</td><td>50</td><td>443</td><td>0.235</td>
+          <td>7.98 [6.33&ndash;9.93]&times;10<sup>&minus;6</sup></td><td>0.167 [0.132&ndash;0.208]</td><td>84.6%</td><td>0</td></tr>
+      <tr class="bad-row"><td>SRAM_ctrl_200</td><td>200</td><td>2713</td><td>0.134</td>
+          <td>1.57 [1.31&ndash;1.86]&times;10<sup>&minus;5</sup></td><td>2.204 [1.837&ndash;2.622]</td><td>11.0%</td><td>2</td></tr>
+      <tr class="bad-row"><td>FRAM_200</td><td>200</td><td>2905</td><td>0.140</td>
+          <td>1.34 [0.99&ndash;1.76]&times;10<sup>&minus;5</sup></td><td>1.880 [1.396&ndash;2.479]</td><td>15.3%</td><td>0</td></tr>
     </tbody>
   </table></div>
+  <p class="note">Intervals are Garwood exact 95&percnt; Poisson limits on the event count, propagated
+  to \(x\). They are counting uncertainty only; systematic uncertainty in the fluence normalisation
+  is not included and is discussed in the audit below.</p>
+</section>
+
+<section class="card">
+  <h2>How much of this is distinguishable?</h2>
+  <p>The central values above invite a configuration-by-configuration reading that the counting
+  statistics do not support. Of the fifteen pairwise comparisons of \(\sigma_{\text{SEFI}}\),
+  <strong>nine have overlapping 95&percnt; intervals</strong>. The factor of 2.5 spread across the set
+  is real at the extremes, since SRAM_1 and SRAM_ctrl_200 are separated, but most individual pairs are
+  not resolved and should not be treated as different.</p>
+  <p>The same caution applies to the computation-phase cross sections, where the counts are much
+  smaller:</p>
+  <div class="table-wrap"><table class="casestudy">
+    <thead><tr><th>Configuration</th><th>errors</th><th>implied \(\sigma_{\text{circ}}\) (cm<sup>2</sup>)</th><th>95&percnt; interval</th></tr></thead>
+    <tbody>
+      <tr><td>FRAM_1_throttled</td><td>28</td><td>6.24&times;10<sup>&minus;6</sup></td><td>[4.15&ndash;9.02]&times;10<sup>&minus;6</sup></td></tr>
+      <tr><td>FRAM_1</td><td>7</td><td>7.21&times;10<sup>&minus;6</sup></td><td>[2.90&ndash;14.9]&times;10<sup>&minus;6</sup></td></tr>
+      <tr><td>SRAM_1</td><td>7</td><td>3.68&times;10<sup>&minus;5</sup></td><td>[1.48&ndash;7.58]&times;10<sup>&minus;5</sup></td></tr>
+      <tr><td>SRAM_ctrl_200</td><td>2</td><td>1.84&times;10<sup>&minus;6</sup></td><td>[0.22&ndash;6.65]&times;10<sup>&minus;6</sup></td></tr>
+      <tr><td>FRAM_50, FRAM_200</td><td>0</td><td colspan="2">upper limit only</td></tr>
+    </tbody>
+  </table></div>
+  <p>Two consequences follow. First, the 13&percnt; central agreement between FRAM_1 and
+  FRAM_1_throttled cited below is far more precise than the data warrant: those two intervals overlap
+  across most of their range. That agreement is consistent with the model, but it is weak evidence
+  for it. Second, the SRAM_1 result is the one configuration contrast in the set that survives its own
+  intervals, lying wholly above FRAM_1_throttled and marginally above FRAM_1.</p>
+  <p class="note">This is why the batch series carries the argument. It spans two orders of magnitude
+  in \(x\), which is far wider than the counting uncertainty on any individual point, so its trend
+  does not depend on resolving configurations that the statistics cannot separate.</p>
 </section>
 
 <section class="card">
@@ -126,14 +164,40 @@ measured, not fitted.</p>
 </section>
 
 <section class="card">
-  <h2>4. An anomaly the model does not explain</h2>
-  <p>FRAM_50 sits at \(x=0.167\), comfortably the best-placed configuration in the campaign, with
-  85&percnt; of cycles surviving and a healthy \(f=0.235\). On the fitted cross section it should have
-  produced roughly fifteen verified errors. It produced none.</p>
-  <p>That deficit is far too large to be chance, so it points at the observation and verification chain
-  for this configuration rather than at the device. It is recorded here as an open discrepancy rather
-  than smoothed over. It also illustrates a secondary use of the model: a large shortfall against
-  predicted yield is a signal that something in the measurement path is failing silently.</p>
+  <h2>4. A limitation exposed by the 50-batch configuration</h2>
+  <p>FRAM_50 sits at \(x=0.167\), which by the model makes it the best-placed configuration in the
+  campaign. Its measured behaviour does not match that description, and the reason is a specific
+  limitation of the model rather than a defect in the data.</p>
+  <p>Flux is not the explanation. The three FRAM_50 runs delivered 45.2, 45.3 and
+  48.5&nbsp;k&nbsp;ions&nbsp;cm<sup>&minus;2</sup>&nbsp;s<sup>&minus;1</sup>, matching the facility
+  record to better than 1&percnt; and sitting slightly <em>below</em> the campaign mean.</p>
+  <p>What the outputs show is that 358 of 573 compared batches contained verified mismatches, with
+  17,607 of 17,900 compared rows in error, against only 80 logged interruptions in the same runs.
+  That is roughly <strong>4.5 corrupted batches per interruption</strong>. Grouped into persistent
+  episodes: 126 episodes, of which 125 begin after a recovery, and 39 are runs of entirely zero-valued
+  output extending up to 27 consecutive batches. Every persistent all-zero cluster anywhere in the
+  campaign occurs in this one configuration.</p>
+  <div class="table-wrap"><table class="casestudy">
+    <thead><tr><th>Configuration</th><th>B</th><th>interruptions</th><th>corrupted batches</th><th>corrupted per interruption</th></tr></thead>
+    <tbody>
+      <tr><td>FRAM_1_throttled</td><td>1</td><td>156</td><td>42</td><td>0.27</td></tr>
+      <tr><td>FRAM_1</td><td>1</td><td>180</td><td>185</td><td>1.03</td></tr>
+      <tr class="bad-row"><td>FRAM_50</td><td>50</td><td>80</td><td>358</td><td><strong>4.47</strong></td></tr>
+      <tr><td>SRAM_ctrl_200</td><td>200</td><td>127</td><td>18</td><td>0.14</td></tr>
+      <tr><td>FRAM_200</td><td>200</td><td>50</td><td>3</td><td>0.06</td></tr>
+    </tbody>
+  </table></div>
+  <p>The model assumes an interruption destroys the cycle it lands in and no more. FRAM_50 violates
+  that: a reset re-establishes the communication protocol without reinitialising the FRAM-resident
+  output and control arrays, so corrupted state survives recovery and is transmitted again. The effect
+  peaks at this batch size because a 50-result batch is long enough for the device to complete and
+  report further batches while still carrying corrupted state. The 200-batch builds mostly fail to
+  complete a batch at all, and the batch-1 builds clear within one cycle.</p>
+  <p class="note"><strong>Consequence for test design.</strong> \(x\) ranks exposure to interruption,
+  not the yield of usable data, when recovery does not restore internal state. A configuration can sit
+  at a favourable \(x\) and still deliver little verified output. Where non-volatile storage holds
+  computation state, measure how long wrong output persists after a recovery, and prefer a
+  configuration that clears within one cycle over one that does not at equal \(x\).</p>
 </section>
 
 <section class="card">
