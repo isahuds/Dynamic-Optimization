@@ -1,110 +1,103 @@
-/* Batch-size explorer page. Uses the shared model in model.js. */
 (function () {
   "use strict";
   var S = window.SEE;
-  var IDS = ["phi", "sigSefi", "sigCirc", "R", "bt0", "bts", "bwd", "Ntarget"];
-  var read;
 
-  // W(B) = t0 + B*ts ; f(B) = B*wc / W(B). Millisecond inputs, second internals.
-  function geom(v) {
-    var t0 = v.bt0 / 1000, ts = v.bts / 1000, wc = Math.min(v.bwd, v.bts) / 1000;
-    return {
-      W: function (B) { return t0 + B * ts; },
-      f: function (B) { return (B * wc) / (t0 + B * ts); },
-      clamped: v.bwd > v.bts
-    };
-  }
-
-  function rateAt(B, g, v) {
-    return S.rate(v.phi, {
-      phi: v.phi, sigSefi: v.sigSefi, W: g.W(B), f: g.f(B), R: v.R, exposed: v.exposed
-    });
+  function val(id) {
+    var el = document.getElementById(id);
+    var v = parseFloat(el.value);
+    el.classList.toggle("invalid", isNaN(v) || v < 0);
+    return v;
   }
 
   function update() {
-    var mEl = document.getElementById("batchMetrics");
-    var wEl = document.getElementById("batchWarn");
-    var tEl = document.getElementById("batchTable");
-    var v = read();
-    if (!v) {
-      mEl.innerHTML = '<p class="help">Enter positive values above.</p>';
-      wEl.innerHTML = ""; tEl.innerHTML = "";
-      S.drawCurve("batchChart", null);
-      return;
-    }
-    var g = geom(v);
+    var w0 = val("inputW0") / 1000;
+    var ts = val("inputTS") / 1000;
+    var lambda = val("inputLambda");
+    var recovery = val("inputRecovery");
+    if (isNaN(w0) || w0 <= 0 || isNaN(ts) || ts <= 0 || isNaN(lambda) || lambda <= 0) return;
+    if (isNaN(recovery) || recovery < 0) recovery = 0;
 
-    var best = 1, bestR = 0, B, r;
-    for (B = 1; B <= 500; B++) {
-      r = rateAt(B, g, v);
-      if (r > bestR) { bestR = r; best = B; }
-    }
-    var Wb = g.W(best), fb = g.f(best), xb = v.phi * v.sigSefi * Wb;
-    var r1 = rateAt(1, g, v);
-    var evOpt = bestR * v.sigCirc;
+    var origW0 = S.W0;
+    var origTS = S.TS;
+    var bstarCont = (Math.sqrt(2 * w0 / lambda) - w0) / ts;
+    var wstar = Math.sqrt(2 * w0 / lambda);
 
-    mEl.innerHTML =
-      S.metric("Optimal batch size B*", String(best), "", "maximises verified data per hour", true) +
-      S.metric("Beam time for " + S.sci(v.Ntarget, 0) + " events", S.dur(v.Ntarget / evOpt), "", "at B*", true) +
-      S.metric("Work cycle there", S.dur(Wb), "", "W = t₀ + B·t_s") +
-      S.metric("Targeting efficiency there", fb.toFixed(3), "", "f = B·w_c / W") +
-      S.metric("Interrupts per cycle there", xb.toFixed(3), "", xb > 1 ? "over-driven" : "well matched") +
-      S.metric("Cycles surviving", S.pct(Math.exp(-xb)), "", "at B*") +
-      S.metric("Gain over B = 1", (bestR / r1).toFixed(2) + "×", "", "more data per hour of beam");
+    var bestB = 1, bestT = 0;
+    var wc = function (b) { return w0 + ts * b; };
+    var tp = function (b) { return b * lambda / Math.expm1(lambda * wc(b)); };
+    for (var b = 1; b <= 500; b++) {
+      var t = tp(b);
+      if (t > bestT) { bestT = t; bestB = b; }
+    }
 
-    /* comparison table across representative batch sizes */
-    var rows = [1, 2, 5, 10, 20, 50, 100, 200, 500];
-    if (rows.indexOf(best) === -1) { rows.push(best); rows.sort(function (a, b) { return a - b; }); }
-    tEl.innerHTML =
-      '<table class="casestudy"><thead><tr><th>B</th><th>W</th><th>f</th><th>x</th>' +
-      '<th>cycles surviving</th><th>data rate</th></tr></thead><tbody>' +
-      rows.map(function (b) {
-        var x = v.phi * v.sigSefi * g.W(b);
-        var frac = rateAt(b, g, v) / bestR;
-        var cls = b === best ? ' class="opt-row"' : (x > 1 ? ' class="bad-row"' : "");
-        return "<tr" + cls + "><td>" + b + (b === best ? " ←" : "") + "</td><td>" + S.dur(g.W(b)) +
-          "</td><td>" + g.f(b).toFixed(3) + "</td><td>" + x.toFixed(3) + "</td><td>" +
-          S.pct(Math.exp(-x), 0) + "</td><td>" + S.pct(frac, 0) + " of best</td></tr>";
-      }).join("") + "</tbody></table>";
+    var cost = function (b) { return Math.expm1(lambda * wc(b)) * (1 / lambda + recovery) / b; };
 
-    var w = [];
-    if (g.clamped) {
-      w.push(["Per-sample compute exceeds per-sample cost",
-        "Compute time per sample cannot be larger than the total time each sample adds to the cycle. " +
-        "It has been clamped to t_s, which makes f = 1. Check the two values."]);
-    }
-    if (best >= 500) {
-      w.push(["Optimum is at or beyond the search limit",
-        "Interrupts are rare enough at this flux that batching keeps paying. Confirm a batch this large " +
-        "is realistic for your buffer and telemetry budget before adopting it."]);
-    }
-    if (xb > 1) {
-      w.push(["Even the best batch size leaves the device over-driven",
-        "Reduce flux first. Batch size cannot rescue an operating point where most cycles are destroyed " +
-        "before they finish.", true]);
-    }
-    if (best === 1) {
-      w.push(["Batching does not help here",
-        "Fixed per-transfer overhead is small relative to per-sample cost, or interrupts are frequent " +
-        "enough that a longer cycle never pays. Report every result individually."]);
-    }
-    wEl.innerHTML = w.map(function (a) { return S.warnBox(a[0], a[1], a[2]); }).join("");
+    document.getElementById("batchMetrics").innerHTML =
+      S.metric("B* (formula)", bstarCont.toFixed(1), "", "continuous throughput optimum; upper bound", true) +
+      S.metric("B* (exact integer)", String(bestB), "", "exhaustive search over B=1..500", true) +
+      S.metric("W* (optimal cycle)", S.dur(wstar), "", "√(2W₀/λ)") +
+      S.metric("Cost at B*", S.dur(cost(bestB)), " per result", "with recovery proxy " + S.dur(recovery));
 
-    var Bmax = Math.max(60, Math.min(500, best * 3));
     S.drawCurve("batchChart", {
-      xMin: 1, xMax: Bmax,
-      fn: function (b) { return rateAt(b, g, v); },
-      peak: bestR,
-      optAt: best, optLabel: "B* = " + best,
-      xLabel: "batch size B (results per telemetry transfer)",
-      yLabel: "data rate (fraction of best)",
-      xFmt: function (t) { return String(Math.round(t)); }
+      xMin: 1,
+      xMax: Math.min(500, Math.max(200, bestB * 4)),
+      fn: tp,
+      peak: bestT,
+      optAt: bestB,
+      optLabel: "B* = " + bestB,
+      xLabel: "batch size B"
     });
+
+    var candidates = [1, 10, Math.max(1, Math.round(bestB / 2)), bestB, Math.round(bestB * 2), 100, 200]
+      .filter(function (v) { return v >= 1 && v <= 500; })
+      .filter(function (v, i, a) { return a.indexOf(v) === i; })
+      .sort(function (a, b) { return a - b; });
+
+    document.getElementById("batchTable").innerHTML =
+      '<table><thead><tr><th>B</th><th>W(B)</th><th>Throughput (relative)</th><th>Cost per result</th></tr></thead><tbody>' +
+      candidates.map(function (b) {
+        var rel = (100 * tp(b) / bestT).toFixed(1);
+        return '<tr' + (b === bestB ? ' style="font-weight:600;background:#eef5fb"' : '') + '><td>' +
+          b + (b === bestB ? ' ←' : '') + '</td><td>' + S.dur(wc(b)) +
+          '</td><td>' + rel + '%</td><td>' + S.dur(cost(b)) + '</td></tr>';
+      }).join('') + '</tbody></table>';
+
+    document.getElementById("validationTable").innerHTML =
+      '<table><thead><tr><th>Configuration</th><th>B</th><th>Predicted</th><th>Measured</th><th>Error</th></tr></thead><tbody>' +
+      S.VALIDATION.map(function (v) {
+        return '<tr><td>' + v.config + '</td><td>' + v.batchSize +
+          '</td><td>' + v.predicted_ms.toFixed(3) + ' ms</td><td>' + v.measured_ms.toFixed(3) +
+          ' ms</td><td>' + (v.error > 0 ? '+' : '') + (v.error * 100).toFixed(1) + '%</td></tr>';
+      }).join('') + '</tbody></table>';
   }
 
-  document.addEventListener("DOMContentLoaded", function () {
-    read = S.bindInputs(IDS, update, "exposed");
+  function init() {
+    var presets = document.getElementById("configPresets");
+    S.CONFIGS.concat(S.POOLED).forEach(function (cfg) {
+      var btn = document.createElement("button");
+      btn.className = "btn-preset ghost";
+      btn.textContent = cfg.label;
+      btn.addEventListener("click", function () {
+        document.getElementById("inputLambda").value = cfg.lambda;
+        update();
+      });
+      presets.appendChild(btn);
+    });
+
+    document.getElementById("presetDefault").addEventListener("click", function () {
+      document.getElementById("inputW0").value = "25.145";
+      document.getElementById("inputTS").value = "7.077";
+      document.getElementById("inputLambda").value = "0.415918";
+      document.getElementById("inputRecovery").value = "0.165";
+      update();
+    });
+
+    ["inputW0", "inputTS", "inputLambda", "inputRecovery"].forEach(function (id) {
+      document.getElementById(id).addEventListener("input", update);
+    });
+
     update();
-    window.addEventListener("resize", update);
-  });
+  }
+
+  document.addEventListener("DOMContentLoaded", init);
 })();

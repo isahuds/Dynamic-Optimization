@@ -1,335 +1,507 @@
-/* Shared model and helpers for the Dynamic SEE Test Design Optimizer.
+/* Flux-primary design-tool model, plus the calibrated batch-size refinement
+ * and prospective Poisson helpers.
  *
- *   Phi_eff = phi * f * eta(x, rho)
- *   eta     = exp(-x) / (1 + rho*(1 - exp(-x)))
- *   x       = phi * sigma_SEFI * W      interrupts per work cycle
- *   rho     = R_eff / W                 recovery cost ratio
+ * Primary formula: pick a target clean-cycle fraction theta (probability a
+ * work cycle of length W completes without an interruption) and a target
+ * fluence. That gives a required interruption rate lambda = -ln(theta)/W,
+ * which converts to a flux (held fixed for the whole run) and a wall-clock
+ * time estimate. Batch size is not part of this: W is whatever an
+ * experimenter's own test measures out to, not a device-specific constant.
  *
- * Every page imports this file, so the maths exists in exactly one place.
- * Exposed as window.SEE.
+ * Secondary refinement: for test architectures that DO support a tunable
+ * checkpoint interval, B* = (sqrt(2*W0/lambda) - W0) / ts squeezes extra
+ * throughput out of a flux already chosen. Operationally calibrated from the
+ * 2026 MSU heavy-ion campaign (W0, ts, and per-config lambda below); this
+ * reproduces the measured per-delivered-result cost to 7-20% across three
+ * tested batch sizes, but it is optional, not the headline result.
  */
-(function (global) {
+(function (root, factory) {
+  "use strict";
+  var api = factory();
+  if (typeof module === "object" && module.exports) module.exports = api;
+  if (root) root.SEE = api;
+})(typeof window !== "undefined" ? window : null, function () {
   "use strict";
 
-  /* ---------------- model ---------------- */
+  var RELEASE = Object.freeze({
+    schemaVersion: "flux-primary-design-tool-v1-2026-08-29",
+    releaseDate: "2026-08-29",
+    status: "operationally_calibrated"
+  });
 
-  function eta(x, rho) {
-    var s = Math.exp(-x);
-    return s / (1 + rho * (1 - s));
+  var W0 = 0.025145;
+  var TS = 0.007077;
+  var ZERO_EVENT_UPPER_COUNT = 2.995732273553991;
+  var THETA_DEFAULT = 0.80;
+  var FLUENCE_TARGET_DEFAULT = 1e7;
+
+  var FACILITIES = Object.freeze([
+    Object.freeze({
+      id: "LBNL", label: "LBNL 88-Inch Cyclotron (BASE)",
+      fluxMin: null, fluxMax: 1e7,
+      source: "facility page (cyclotron.lbl.gov/base-rad-effects/heavy-ions)"
+    }),
+    Object.freeze({
+      id: "BNL", label: "BNL Tandem Van de Graaff (SEU Test Facility)",
+      fluxMin: 1e2, fluxMax: 1e5,
+      source: "facility page (bnl.gov/tandem/capabilities/seu.php)"
+    }),
+    Object.freeze({
+      id: "MSU", label: "MSU NSCL K500/K1200 (SEETF)",
+      fluxMin: 7.7e1, fluxMax: 2.5e5,
+      source: "peer-reviewed facility-performance paper"
+    })
+  ]);
+
+  var CONFIGS = Object.freeze([
+    Object.freeze({ id: "FRAM_B1",            label: "FRAM B=1, 16 MHz",        batchSize: 1,   n: 242, burst_s: 551.359, lambda: 0.438916 }),
+    Object.freeze({ id: "FRAM_B1_Throttled",  label: "FRAM B=1, 1 MHz",         batchSize: 1,   n: 186, burst_s: 377.9,   lambda: 0.492 }),
+    Object.freeze({ id: "SRAM_B1",            label: "SRAM B=1, 16 MHz",        batchSize: 1,   n: 63,  burst_s: 96.725,  lambda: 0.651332 }),
+    Object.freeze({ id: "FRAM_B50",           label: "FRAM B=50, 16 MHz",       batchSize: 50,  n: 98,  burst_s: 268.092, lambda: 0.365546 }),
+    Object.freeze({ id: "FRAM_B200",          label: "FRAM B=200, 16 MHz",      batchSize: 200, n: 56,  burst_s: 132.659, lambda: 0.422135 }),
+    Object.freeze({ id: "SRAM_Mixed_B200",    label: "SRAM/Mixed B=200, 16 MHz",batchSize: 200, n: 142, burst_s: 283.730, lambda: 0.500475 })
+  ]);
+
+  var POOLED = Object.freeze([
+    Object.freeze({ id: "Pooled_all_six",  label: "Pooled (all six)",      n: 787, burst_s: 1710.482, lambda: 0.460104 }),
+    Object.freeze({ id: "Pooled_FRAM16",   label: "Pooled (FRAM 16 MHz)",  n: 396, burst_s: 952.110,  lambda: 0.415918 })
+  ]);
+
+  var PILEUP = Object.freeze({
+    k: 1.0688e-4,
+    tau: 0.4406,
+    peakFlux: 21234
+  });
+
+  var VALIDATION = Object.freeze([
+    Object.freeze({ config: "FRAM_B1",   batchSize: 1,   predicted_ms: 34.666, measured_ms: 43.065, error: -0.195 }),
+    Object.freeze({ config: "FRAM_B50",  batchSize: 50,  predicted_ms: 8.774,  measured_ms: 8.181,  error: 0.072 }),
+    Object.freeze({ config: "FRAM_B200", batchSize: 200, predicted_ms: 10.542, measured_ms: 9.161,  error: 0.151 })
+  ]);
+
+  var CAMPAIGN = Object.freeze({
+    episodes: 107,
+    admittedVectors: 1303,
+    attributedFloor: 50,
+    dispositionSensitivity: 167,
+    recoveryAttempts: 4623,
+    recoveryGroups: 927,
+    autoSuccessRate: 0.961,
+    medianRecovery_s: 0.165290,
+    medianFacilityPause_s: 84.6,
+    framSramRatio: 4.30,
+    framSramRatioCI: [2.87, 6.40],
+    fluxExponent: -0.96,
+    pileupR2: 0.37
+  });
+
+  function requireFinitePositive(value, name) {
+    if (!Number.isFinite(value) || value <= 0) throw new RangeError(name + " must be finite and positive");
   }
 
-  // Throughput shape at FIXED rho: proportional to u*eta(u).
-  function shape(u, rho) { return u * eta(u, rho); }
-
-  /* Effective recovery time.
-   *
-   * With the beam on during recovery, a further interrupt restarts it. For a
-   * restart-on-failure process of nominal length R under Poisson hazard lambda,
-   * expected completion is (exp(lambda*R)-1)/lambda, which diverges as
-   * lambda*R approaches 1. With the beam paused, recovery is protected and R
-   * is used unchanged. This term is what stops the model from recommending
-   * arbitrarily hot beams.
-   */
-  function effectiveR(phi, sigSefi, R, exposed) {
-    if (!exposed) return R;
-    var lam = phi * sigSefi;
-    if (lam <= 0) return R;
-    var z = lam * R;
-    if (z > 300) return Infinity;
-    return (Math.exp(z) - 1) / lam;
+  function workCycle(batchSize) {
+    requireFinitePositive(batchSize, "batch size");
+    return W0 + TS * batchSize;
   }
 
-  // Effective fluence rate onto the circuit of interest, per second of beam time.
-  function rate(phi, p) {
-    var x = phi * p.sigSefi * p.W;
-    var Re = effectiveR(phi, p.sigSefi, p.R, p.exposed);
-    if (!isFinite(Re)) return 0;
-    var s = Math.exp(-x);
-    return phi * p.f * s / (1 + (Re / p.W) * (1 - s));
+  function bstarFormula(lambda) {
+    requireFinitePositive(lambda, "lambda");
+    return (Math.sqrt(2 * W0 / lambda) - W0) / TS;
   }
 
-  // Closed-form optimum for constant rho: (1-u)(1+rho) = rho*exp(-u).
-  /* ---------------------------------------------------------------------
-   * BATCH SIZE AS A SECOND DECISION VARIABLE.
-   *
-   * Added 2026-08-14. An audit against the literature found that the paper and
-   * this tool both CLAIMED telemetry batch size as a jointly optimised lever
-   * while the equations contained no such variable: B entered only implicitly
-   * through W and f, and nothing differentiated with respect to it. The claim
-   * is now earned rather than asserted.
-   *
-   * The work cycle grows with batch size. Fitted to the measured campaign
-   * cycles at LET 7.9 (B = 50 and 200):
-   *
-   *     W(B) = W0 + w*B,   W0 ~ 13.4 ms fixed,  w ~ 4.05 ms per vector
-   *
-   * so the cycle is NOT overhead-dominated: B = 4 already doubles it. Per
-   * completed cycle the device yields B verified vectors, but a longer cycle
-   * raises x = phi*sigma*W(B) and so lowers the survival probability e^-x.
-   * That trade has an interior optimum:
-   *
-   *     yield(B) = B * e^-x / ( W(B) + Reff*(1 - e^-x) )   vectors per second
-   *
-   * Reff is the interruptible-recovery time, so raising B is penalised twice
-   * under an exposed recovery: a longer cycle is likelier to be hit, and the
-   * recovery that follows is itself likelier to be hit.
-   *
-   * There is no closed form here either; the optimum is found by scanning,
-   * which is honest and cheap for an integer decision variable.
-   * ------------------------------------------------------------------- */
-  function batchYield(B, p) {
-    var W = p.W0 + p.wPer * B;
-    var lam = p.phi * p.sigSefi;
-    var x = lam * W;
-    var s = Math.exp(-x);
-    var Re = effectiveR(p.phi, p.sigSefi, p.R, p.exposed);
-    if (!isFinite(Re)) return 0;
-    var denom = W + Re * (1 - s);
-    return denom > 0 ? (B * s) / denom : 0;
+  function wstarFormula(lambda) {
+    requireFinitePositive(lambda, "lambda");
+    return Math.sqrt(2 * W0 / lambda);
   }
 
-  function optimalB(p, bMax) {
-    var hi = bMax || 512, best = 1, bestY = -1;
-    for (var B = 1; B <= hi; B++) {
-      var y = batchYield(B, p);
-      if (y > bestY) { bestY = y; best = B; }
+  function throughput(batchSize, lambda) {
+    requireFinitePositive(batchSize, "batch size");
+    requireFinitePositive(lambda, "lambda");
+    var w = workCycle(batchSize);
+    return batchSize * lambda / Math.expm1(lambda * w);
+  }
+
+  function costPerResult(batchSize, lambda, recoveryProxy) {
+    requireFinitePositive(batchSize, "batch size");
+    requireFinitePositive(lambda, "lambda");
+    if (recoveryProxy == null) recoveryProxy = 0;
+    if (!Number.isFinite(recoveryProxy) || recoveryProxy < 0) throw new RangeError("recovery proxy must be finite and nonnegative");
+    var w = workCycle(batchSize);
+    return Math.expm1(lambda * w) * (1 / lambda + recoveryProxy) / batchSize;
+  }
+
+  function optimalBatchExact(lambda, bMax) {
+    if (bMax == null) bMax = 500;
+    requireFinitePositive(lambda, "lambda");
+    var bestB = 1;
+    var bestT = throughput(1, lambda);
+    for (var b = 2; b <= bMax; b++) {
+      var t = throughput(b, lambda);
+      if (t > bestT) { bestT = t; bestB = b; }
     }
-    return { B: best, yield: bestY };
+    return {
+      batch: bestB,
+      throughput: bestT,
+      workCycle: workCycle(bestB),
+      bstarContinuous: bstarFormula(lambda)
+    };
   }
 
-  function optimalU(rho) {
-    if (!isFinite(rho) || rho <= 0) return 1;
-    var gap = function (u) { return (1 - u) * (1 + rho) - rho * Math.exp(-u); };
-    if (gap(1) > 0) return 1;
-    var lo = 1e-12, hi = 1, mid;
-    for (var i = 0; i < 200; i++) {
-      mid = 0.5 * (lo + hi);
-      if (gap(mid) > 0) lo = mid; else hi = mid;
+  function pileupRate(flux) {
+    if (!Number.isFinite(flux) || flux < 0) return 0;
+    if (flux === 0) return 0;
+    return PILEUP.k * flux * Math.exp(-PILEUP.k * flux * PILEUP.tau);
+  }
+
+  function bstarAtFlux(flux) {
+    var lambda = pileupRate(flux);
+    if (lambda <= 0) return Infinity;
+    return bstarFormula(lambda);
+  }
+
+  /* --- Flux-primary formula: theta (clean-cycle fraction) + W (measured,
+   * fixed work-cycle time) + target fluence -> required flux + wall time.
+   * W here is whatever an experimenter's own bench measurement gives; it is
+   * not assumed to decompose into W0 + B*ts the way the batch-size
+   * refinement above does. */
+
+  function requiredLambda(theta, W) {
+    if (!(theta > 0 && theta < 1)) throw new RangeError("clean-cycle fraction must be strictly between 0 and 1");
+    requireFinitePositive(W, "work-cycle time");
+    return -Math.log(theta) / W;
+  }
+
+  function cleanFraction(lambda, W) {
+    requireFinitePositive(lambda, "lambda");
+    requireFinitePositive(W, "work-cycle time");
+    return Math.exp(-lambda * W);
+  }
+
+  function wallClockTime(flux, fluenceTarget) {
+    requireFinitePositive(flux, "flux");
+    requireFinitePositive(fluenceTarget, "fluence target");
+    return fluenceTarget / flux;
+  }
+
+  function peakPileupLambda() {
+    return pileupRate(PILEUP.peakFlux);
+  }
+
+  function fluxFromLambdaViaPileup(targetLambda) {
+    requireFinitePositive(targetLambda, "target lambda");
+    var peak = peakPileupLambda();
+    if (targetLambda >= peak) {
+      /* The quality target never binds anywhere in the achievable range for
+       * this device: even the pileup peak's interruption rate satisfies it.
+       * The real ceiling here is pileup fidelity, not the clean-cycle
+       * target, so the honest answer is "as high as the fidelity ceiling
+       * allows," not "impossible." */
+      return { flux: PILEUP.peakFlux, qualityBinding: false };
+    }
+    var lo = 0, hi = PILEUP.peakFlux;
+    for (var i = 0; i < 100; i += 1) {
+      var mid = 0.5 * (lo + hi);
+      if (pileupRate(mid) < targetLambda) lo = mid; else hi = mid;
+    }
+    return { flux: 0.5 * (lo + hi), qualityBinding: true };
+  }
+
+  function facilitiesAchieving(flux) {
+    requireFinitePositive(flux, "flux");
+    return FACILITIES.filter(function (f) {
+      var minOk = f.fluxMin == null || flux >= f.fluxMin;
+      var maxOk = f.fluxMax == null || flux <= f.fluxMax;
+      return minOk && maxOk;
+    });
+  }
+
+  function fluxPlan(theta, W, fluenceTarget) {
+    var lambdaTarget = requiredLambda(theta, W);
+    var solved = fluxFromLambdaViaPileup(lambdaTarget);
+    var plan = {
+      theta: theta,
+      W: W,
+      fluenceTarget: fluenceTarget,
+      lambdaTarget: lambdaTarget,
+      flux: solved.flux,
+      qualityBinding: solved.qualityBinding,
+      wallClock_s: wallClockTime(solved.flux, fluenceTarget),
+      facilities: facilitiesAchieving(solved.flux)
+    };
+    return plan;
+  }
+
+  /* --- Poisson / Garwood machinery (unchanged) --- */
+
+  var GATE_KEYS = Object.freeze([
+    "poissonEligible",
+    "physicalCrossSectionEligible",
+    "independenceEstablished",
+    "numeratorAvailable",
+    "denominatorAvailable",
+    "unitWindowCompatible",
+    "opportunityObserved"
+  ]);
+
+  function failedGates(gates) {
+    if (!gates || typeof gates !== "object") throw new TypeError("eligibility gates must be an object");
+    return GATE_KEYS.filter(function (key) {
+      if (typeof gates[key] !== "boolean") throw new TypeError("eligibility gate " + key + " must be boolean");
+      return !gates[key];
+    });
+  }
+
+  function logGamma(z) {
+    var p = [
+      0.99999999999980993, 676.5203681218851, -1259.1392167224028,
+      771.32342877765313, -176.61502916214059, 12.507343278686905,
+      -0.13857109526572012, 9.9843695780195716e-6, 1.5056327351493116e-7
+    ];
+    if (z < 0.5) return Math.log(Math.PI) - Math.log(Math.sin(Math.PI * z)) - logGamma(1 - z);
+    z -= 1;
+    var x = p[0];
+    for (var i = 1; i < p.length; i += 1) x += p[i] / (z + i);
+    var t = z + 7.5;
+    return 0.5 * Math.log(2 * Math.PI) + (z + 0.5) * Math.log(t) - t + Math.log(x);
+  }
+
+  function regularizedGammaP(a, x) {
+    if (!(a > 0) || x < 0 || !Number.isFinite(a) || !Number.isFinite(x)) throw new RangeError("invalid incomplete-gamma arguments");
+    if (x === 0) return 0;
+    var eps = 1e-14;
+    var maxIter = 100000;
+    var i;
+    if (x < a + 1) {
+      var ap = a;
+      var sum = 1 / a;
+      var delta = sum;
+      for (i = 1; i <= maxIter; i += 1) {
+        ap += 1;
+        delta *= x / ap;
+        sum += delta;
+        if (Math.abs(delta) <= Math.abs(sum) * eps) break;
+      }
+      if (i > maxIter) throw new Error("incomplete-gamma series did not converge");
+      return Math.min(1, Math.max(0, sum * Math.exp(-x + a * Math.log(x) - logGamma(a))));
+    }
+    var tiny = 1e-300;
+    var b = x + 1 - a;
+    var c = 1 / tiny;
+    var d = 1 / Math.max(Math.abs(b), tiny) * (b < 0 ? -1 : 1);
+    var h = d;
+    for (i = 1; i <= maxIter; i += 1) {
+      var an = -i * (i - a);
+      b += 2;
+      d = an * d + b;
+      if (Math.abs(d) < tiny) d = tiny;
+      c = b + an / c;
+      if (Math.abs(c) < tiny) c = tiny;
+      d = 1 / d;
+      var change = d * c;
+      h *= change;
+      if (Math.abs(change - 1) <= eps) break;
+    }
+    if (i > maxIter) throw new Error("incomplete-gamma continued fraction did not converge");
+    var q = Math.exp(-x + a * Math.log(x) - logGamma(a)) * h;
+    return Math.min(1, Math.max(0, 1 - q));
+  }
+
+  function chiSquareQuantile(probability, degreesOfFreedom) {
+    if (!(probability > 0 && probability < 1)) throw new RangeError("chi-square probability must lie in (0,1)");
+    requireFinitePositive(degreesOfFreedom, "chi-square degrees of freedom");
+    var a = degreesOfFreedom / 2;
+    var lo = 0;
+    var hi = Math.max(1, degreesOfFreedom);
+    while (regularizedGammaP(a, hi / 2) < probability) hi *= 2;
+    for (var i = 0; i < 120; i += 1) {
+      var mid = 0.5 * (lo + hi);
+      if (regularizedGammaP(a, mid / 2) < probability) lo = mid;
+      else hi = mid;
     }
     return 0.5 * (lo + hi);
   }
 
-  // Optimal flux. Closed form when recovery is protected, numeric when exposed
-  // (because rho then depends on phi).
-  function optimalPhi(p) {
-    if (!p.exposed) return optimalU(p.R / p.W) / (p.sigSefi * p.W);
-    var best = 0, bestPhi = p.phi, lo = Math.log10(p.phi) - 3, hi = Math.log10(p.phi) + 3, i, phi, r;
-    for (i = 0; i <= 3000; i++) {
-      phi = Math.pow(10, lo + ((hi - lo) * i) / 3000);
-      r = rate(phi, p);
-      if (r > best) { best = r; bestPhi = phi; }
-    }
-    var a = bestPhi / 1.2, b = bestPhi * 1.2;
-    for (i = 0; i <= 400; i++) {
-      phi = a + ((b - a) * i) / 400;
-      r = rate(phi, p);
-      if (r > best) { best = r; bestPhi = phi; }
-    }
-    return bestPhi;
+  function withheld(failed) {
+    return {
+      kind: "ineligible",
+      estimate: null, lower: null, upper: null, upperLimit: null,
+      pointEstimate: null, ci95Lower: null, ci95Upper: null,
+      zeroEventUpperLimit: null,
+      intervalConvention: "not_applied",
+      releaseStatus: "withheld:" + (failed.length ? failed.join(",") : "not_releasable"),
+      failedGates: failed.slice()
+    };
   }
 
-  /* ---------------- formatting ---------------- */
+  function poissonRate95(count, exposure, gates) {
+    if (count !== null && (typeof count === "boolean" || !Number.isInteger(count) || count < 0)) {
+      throw new TypeError("event count must be a nonnegative integer");
+    }
+    var failed = failedGates(gates);
+    if (failed.length) return withheld(failed);
+    if (count === null) throw new RangeError("an eligible result requires an available event count");
+    if (!Number.isFinite(exposure) || exposure <= 0) throw new RangeError("an eligible result requires a finite positive exposure");
+    if (count === 0) {
+      return {
+        kind: "one_sided_upper_limit_95",
+        estimate: null, lower: null, upper: null,
+        upperLimit: ZERO_EVENT_UPPER_COUNT / exposure,
+        pointEstimate: null, ci95Lower: null, ci95Upper: null,
+        zeroEventUpperLimit: ZERO_EVENT_UPPER_COUNT / exposure,
+        intervalConvention: "one_sided_95_percent_zero_event_upper_limit",
+        releaseStatus: "released_upper_limit",
+        failedGates: []
+      };
+    }
+    var lowerCount = 0.5 * chiSquareQuantile(0.025, 2 * count);
+    var upperCount = 0.5 * chiSquareQuantile(0.975, 2 * (count + 1));
+    return {
+      kind: "two_sided_garwood_95",
+      estimate: count / exposure, lower: lowerCount / exposure, upper: upperCount / exposure,
+      upperLimit: null,
+      pointEstimate: count / exposure, ci95Lower: lowerCount / exposure, ci95Upper: upperCount / exposure,
+      zeroEventUpperLimit: null,
+      intervalConvention: "two_sided_exact_95_percent_garwood",
+      releaseStatus: "released_two_sided_interval",
+      failedGates: []
+    };
+  }
+
+  /* --- Formatting / drawing helpers --- */
 
   function sup(n) {
-    var m = { "-": "⁻", 0: "⁰", 1: "¹", 2: "²", 3: "³", 4: "⁴",
-              5: "⁵", 6: "⁶", 7: "⁷", 8: "⁸", 9: "⁹" };
-    return String(n).split("").map(function (c) { return m[c] || c; }).join("");
+    var map = { "-": "⁻", 0: "⁰", 1: "¹", 2: "²", 3: "³", 4: "⁴", 5: "⁵", 6: "⁶", 7: "⁷", 8: "⁸", 9: "⁹" };
+    return String(n).split("").map(function (c) { return map[c] || c; }).join("");
   }
-  function sci(v, digits) {
-    if (!isFinite(v)) return "—";
-    if (v === 0) return "0";
-    digits = digits == null ? 2 : digits;
-    var e = Math.floor(Math.log10(Math.abs(v)));
-    if (e >= -2 && e < 4) {
-      var d = Math.max(0, Math.min(4, 3 - e));
-      return v.toFixed(d).replace(/\.?0+$/, "");
-    }
-    return (v / Math.pow(10, e)).toFixed(digits) + "×10" + sup(e);
-  }
-  function pct(v, d) { return (100 * v).toFixed(d == null ? 1 : d) + "%"; }
 
-  function dur(s) {
-    if (!isFinite(s) || s < 0) return "—";
-    if (s === 0) return "0";
-    if (s < 1) return (s * 1000).toFixed(0) + " ms";
-    if (s < 90) return s.toFixed(1) + " s";
-    if (s < 5400) return (s / 60).toFixed(1) + " min";
-    if (s < 86400 * 2) return (s / 3600).toFixed(2) + " h";
-    return (s / 86400).toFixed(1) + " d";
+  function stripTrailingZeros(s) {
+    if (s.indexOf(".") === -1) return s;
+    return s.replace(/0+$/, "").replace(/\.$/, "");
+  }
+
+  function sci(value, digits) {
+    if (value == null || !Number.isFinite(value)) return "—";
+    if (value === 0) return "0";
+    digits = digits == null ? 3 : digits;
+    var exponent = Math.floor(Math.log10(Math.abs(value)));
+    if (exponent >= -2 && exponent < 4) return stripTrailingZeros(value.toFixed(Math.max(0, Math.min(6, digits - exponent))));
+    return stripTrailingZeros((value / Math.pow(10, exponent)).toFixed(digits)) + "×10" + sup(exponent);
+  }
+
+  function dur(seconds) {
+    if (seconds == null || !Number.isFinite(seconds) || seconds < 0) return "—";
+    if (seconds < 1) return (seconds * 1000).toFixed(3).replace(/\.?0+$/, "") + " ms";
+    return seconds.toFixed(6).replace(/\.?0+$/, "") + " s";
   }
 
   function metric(label, value, unit, sub, hero) {
-    return '<div class="metric' + (hero ? " hero" : "") + '">' +
-           '<div class="k">' + label + "</div>" +
-           '<div class="v">' + value + (unit ? "<small>" + unit + "</small>" : "") + "</div>" +
-           (sub ? '<div class="sub">' + sub + "</div>" : "") + "</div>";
+    return '<div class="metric' + (hero ? " hero" : "") + '"><div class="k">' + label +
+      '</div><div class="v">' + value + (unit ? "<small>" + unit + "</small>" : "") +
+      "</div>" + (sub ? '<div class="sub">' + sub + "</div>" : "") + "</div>";
   }
 
   function warnBox(title, body, bad) {
     return '<div class="warnbox' + (bad ? " bad" : "") + '"><b>' + title + "</b>" + body + "</div>";
   }
 
-  /* ---------------- shared inputs ---------------- */
-
-  // Parameters shared across tool pages, persisted so a value entered on one
-  // page is still there on the next.
-  var STORE = "see-optimizer-v1";
-  // W0 and wPer are the two terms of the batch work model W(B) = W0 + wPer*B,
-  // fitted to the measured LET 7.9 cycles at B = 50 and B = 200. They were
-  // missing here while batchYield already referenced them, so batchYield
-  // evaluated W as NaN, its denominator test failed, and it returned 0 for
-  // every B. optimalB then reported B = 1 with yield 0 for any input.
-  var DEFAULTS = {
-    phi: 5.14e4, sigSefi: 1.12e-5, sigCirc: 6.24e-6,
-    W: 0.072, W0: 0.01335, wPer: 0.004053,
-    f: 0.323, R: 2.49, Ntarget: 100, exposed: true
-  };
-
-  function load() {
-    var v;
-    try { v = JSON.parse(global.localStorage.getItem(STORE) || "null"); } catch (e) { v = null; }
-    if (!v || typeof v !== "object") return Object.assign({}, DEFAULTS);
-    var out = Object.assign({}, DEFAULTS);
-    Object.keys(DEFAULTS).forEach(function (k) {
-      if (k === "exposed") { if (typeof v[k] === "boolean") out[k] = v[k]; }
-      else if (isFinite(v[k]) && v[k] > 0) out[k] = v[k];
-    });
-    return out;
-  }
-  function save(v) {
-    try { global.localStorage.setItem(STORE, JSON.stringify(v)); } catch (e) { /* private mode */ }
-  }
-
-  /* Bind a set of numeric inputs by id, plus an optional checkbox.
-   * Returns a read() that validates, marks bad fields, persists, and returns
-   * null if anything is invalid. */
-  function bindInputs(ids, onChange, checkboxId) {
-    var shared = load();
-    ids.forEach(function (id) {
-      var el = document.getElementById(id);
-      if (el && shared[id] != null) el.value = shared[id];
-    });
-    var cb = checkboxId ? document.getElementById(checkboxId) : null;
-    if (cb) cb.checked = shared.exposed !== false;
-
-    function read() {
-      var v = {}, ok = true;
-      ids.forEach(function (id) {
-        var el = document.getElementById(id);
-        if (!el) return;
-        var n = parseFloat(el.value);
-        var bad = !isFinite(n) || n <= 0 || (id === "f" && n > 1);
-        el.classList.toggle("invalid", bad);
-        if (bad) ok = false;
-        v[id] = n;
-      });
-      v.exposed = cb ? cb.checked : shared.exposed;
-      if (ok) save(Object.assign(load(), v));
-      return ok ? v : null;
-    }
-
-    ids.concat(checkboxId ? [checkboxId] : []).forEach(function (id) {
-      var el = document.getElementById(id);
-      if (!el) return;
-      el.addEventListener("input", onChange);
-      el.addEventListener("change", onChange);
-    });
-    return read;
-  }
-
-  /* ---------------- charting ---------------- */
-
-  /* Generic single-curve chart with an optimum marker and an optional
-   * "you are here" marker. fn maps an x value to a y value. */
-  function drawCurve(canvasId, o) {
-    var c = document.getElementById(canvasId);
-    if (!c) return;
-    var ctx = c.getContext("2d"), Wd = c.width, Hd = c.height;
-    ctx.clearRect(0, 0, Wd, Hd);
-    ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, Wd, Hd);
-    if (!o) return;
-
+  function drawCurve(canvasId, options) {
+    if (typeof document === "undefined") return;
+    var canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    var ctx = canvas.getContext("2d");
+    var width = canvas.width;
+    var height = canvas.height;
+    ctx.clearRect(0, 0, width, height);
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, width, height);
+    if (!options) return;
     var padL = 74, padR = 24, padT = 20, padB = 52;
-    var pw = Wd - padL - padR, ph = Hd - padT - padB;
-    var X = function (t) { return padL + ((t - o.xMin) / (o.xMax - o.xMin)) * pw; };
-    var Y = function (y) { return padT + ph - (y / 1.06) * ph; };
-
-    ctx.strokeStyle = "#eceff3"; ctx.lineWidth = 1;
-    for (var g = 0; g <= 5; g++) {
-      var yy = padT + (ph * g) / 5;
-      ctx.beginPath(); ctx.moveTo(padL, yy); ctx.lineTo(padL + pw, yy); ctx.stroke();
+    var plotW = width - padL - padR;
+    var plotH = height - padT - padB;
+    var xPixel = function (x) { return padL + ((x - options.xMin) / (options.xMax - options.xMin)) * plotW; };
+    var yPixel = function (y) { return padT + plotH - (y / 1.06) * plotH; };
+    ctx.strokeStyle = "#eceff3";
+    ctx.lineWidth = 1;
+    for (var grid = 0; grid <= 5; grid += 1) {
+      var gy = padT + plotH * grid / 5;
+      ctx.beginPath(); ctx.moveTo(padL, gy); ctx.lineTo(padL + plotW, gy); ctx.stroke();
     }
-    ctx.strokeStyle = "#b9c3cf";
-    ctx.beginPath(); ctx.moveTo(padL, padT); ctx.lineTo(padL, padT + ph);
-    ctx.lineTo(padL + pw, padT + ph); ctx.stroke();
-
-    ctx.strokeStyle = "#2f6fb0"; ctx.lineWidth = 2.4; ctx.beginPath();
-    for (var i = 0; i <= 400; i++) {
-      var t = o.xMin + ((o.xMax - o.xMin) * i) / 400;
-      var y = o.fn(t) / o.peak;
-      if (i === 0) ctx.moveTo(X(t), Y(y)); else ctx.lineTo(X(t), Y(y));
+    ctx.strokeStyle = "#2f6fb0";
+    ctx.lineWidth = 2.4;
+    ctx.beginPath();
+    for (var i = 0; i <= 400; i += 1) {
+      var x = options.xMin + (options.xMax - options.xMin) * i / 400;
+      var y = options.fn(x) / options.peak;
+      if (i === 0) ctx.moveTo(xPixel(x), yPixel(y)); else ctx.lineTo(xPixel(x), yPixel(y));
     }
     ctx.stroke();
-
-    function mark(t, y, color, label, above) {
-      ctx.strokeStyle = color; ctx.lineWidth = 1.6; ctx.setLineDash([5, 4]);
-      ctx.beginPath(); ctx.moveTo(X(t), Y(0)); ctx.lineTo(X(t), Y(y)); ctx.stroke();
+    if (options.optAt != null) {
+      ctx.strokeStyle = "#1f7a4d";
+      ctx.setLineDash([5, 4]);
+      ctx.beginPath(); ctx.moveTo(xPixel(options.optAt), yPixel(0)); ctx.lineTo(xPixel(options.optAt), yPixel(1)); ctx.stroke();
       ctx.setLineDash([]);
-      ctx.fillStyle = color;
-      ctx.beginPath(); ctx.arc(X(t), Y(y), 5.5, 0, 6.2832); ctx.fill();
+      ctx.fillStyle = "#1f7a4d";
+      ctx.beginPath(); ctx.arc(xPixel(options.optAt), yPixel(1), 5.5, 0, 2 * Math.PI); ctx.fill();
       ctx.font = "600 12px -apple-system,Segoe UI,Roboto,sans-serif";
-      var right = X(t) > padL + pw * 0.62;
-      ctx.textAlign = right ? "right" : "left";
-      ctx.fillText(label, X(t) + (right ? -9 : 9), Y(y) + (above ? -11 : 4));
+      var labelX = xPixel(options.optAt);
+      ctx.textAlign = labelX > padL + plotW * 0.65 ? "right" : "left";
+      var labelText = options.optLabel || ("B* = " + options.optAt);
+      ctx.fillText(labelText, labelX + (ctx.textAlign === "right" ? -9 : 9), yPixel(1) + 4);
     }
-    if (o.optAt != null) mark(o.optAt, 1, "#1f7a4d", o.optLabel, false);
-    if (o.nowAt != null && o.nowAt >= o.xMin && o.nowAt <= o.xMax) {
-      mark(o.nowAt, o.fn(o.nowAt) / o.peak, "#a33a30", o.nowLabel, true);
+    if (options.markers) {
+      options.markers.forEach(function (m) {
+        var my = options.fn(m.x) / options.peak;
+        ctx.fillStyle = m.color || "#a33a30";
+        ctx.beginPath(); ctx.arc(xPixel(m.x), yPixel(my), 4, 0, 2 * Math.PI); ctx.fill();
+      });
     }
-
-    ctx.fillStyle = "#5c6878"; ctx.font = "12px -apple-system,Segoe UI,Roboto,sans-serif";
+    ctx.fillStyle = "#5c6878";
     ctx.textAlign = "center";
-    for (var t2 = 0; t2 <= 5; t2++) {
-      var tv = o.xMin + ((o.xMax - o.xMin) * t2) / 5;
-      ctx.fillText(o.xFmt ? o.xFmt(tv) : tv.toFixed(2), X(tv), padT + ph + 19);
+    ctx.font = "400 12px -apple-system,Segoe UI,Roboto,sans-serif";
+    for (var tick = 0; tick <= 5; tick += 1) {
+      var xv = options.xMin + (options.xMax - options.xMin) * tick / 5;
+      ctx.fillText(options.xFormat ? options.xFormat(xv) : String(Math.round(xv)), xPixel(xv), padT + plotH + 19);
     }
     ctx.font = "600 12px -apple-system,Segoe UI,Roboto,sans-serif";
-    ctx.fillText(o.xLabel, padL + pw / 2, Hd - 13);
-    ctx.save(); ctx.translate(17, padT + ph / 2); ctx.rotate(-Math.PI / 2);
-    ctx.textAlign = "center"; ctx.fillText(o.yLabel, 0, 0); ctx.restore();
-    ctx.textAlign = "right"; ctx.font = "12px -apple-system,Segoe UI,Roboto,sans-serif";
-    for (var q = 0; q <= 5; q++) {
-      ctx.fillText((1.06 * q / 5).toFixed(1), padL - 9, padT + ph - (ph * q) / 5 + 4);
-    }
+    ctx.fillText(options.xLabel || "batch size B", padL + plotW / 2, height - 13);
   }
 
-  /* Wide tables must scroll inside their own box rather than pushing the page
-   * sideways. Applied to every table on every page so no markup has to
-   * remember to do it. */
-  function wrapTables() {
-    document.querySelectorAll("table").forEach(function (t) {
-      if (t.parentNode && t.parentNode.classList.contains("table-wrap")) return;
-      var d = document.createElement("div");
-      d.className = "table-wrap";
-      t.parentNode.insertBefore(d, t);
-      d.appendChild(t);
-    });
-  }
-  // Run immediately if the document is already parsed, otherwise on ready.
-  // Guarding both ways makes this independent of where the tag is placed.
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", wrapTables);
-  } else {
-    wrapTables();
-  }
-
-  global.SEE = {
-    eta: eta, shape: shape, effectiveR: effectiveR, rate: rate,
-    optimalU: optimalU,
-    batchYield: batchYield,
-    optimalB: optimalB, optimalPhi: optimalPhi,
-    sci: sci, sup: sup, pct: pct, dur: dur, metric: metric, warnBox: warnBox,
-    load: load, save: save, bindInputs: bindInputs, drawCurve: drawCurve,
-    DEFAULTS: DEFAULTS
-  };
-})(window);
+  return Object.freeze({
+    RELEASE: RELEASE,
+    W0: W0,
+    TS: TS,
+    ZERO_EVENT_UPPER_COUNT: ZERO_EVENT_UPPER_COUNT,
+    THETA_DEFAULT: THETA_DEFAULT,
+    FLUENCE_TARGET_DEFAULT: FLUENCE_TARGET_DEFAULT,
+    FACILITIES: FACILITIES,
+    CONFIGS: CONFIGS,
+    POOLED: POOLED,
+    PILEUP: PILEUP,
+    VALIDATION: VALIDATION,
+    CAMPAIGN: CAMPAIGN,
+    GATE_KEYS: GATE_KEYS,
+    requiredLambda: requiredLambda,
+    cleanFraction: cleanFraction,
+    wallClockTime: wallClockTime,
+    peakPileupLambda: peakPileupLambda,
+    fluxFromLambdaViaPileup: fluxFromLambdaViaPileup,
+    facilitiesAchieving: facilitiesAchieving,
+    fluxPlan: fluxPlan,
+    workCycle: workCycle,
+    bstarFormula: bstarFormula,
+    wstarFormula: wstarFormula,
+    throughput: throughput,
+    costPerResult: costPerResult,
+    optimalBatchExact: optimalBatchExact,
+    pileupRate: pileupRate,
+    bstarAtFlux: bstarAtFlux,
+    poissonRate95: poissonRate95,
+    poisson95: poissonRate95,
+    chiSquareQuantile: chiSquareQuantile,
+    sci: sci,
+    dur: dur,
+    metric: metric,
+    warnBox: warnBox,
+    drawCurve: drawCurve
+  });
+});

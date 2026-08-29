@@ -150,3 +150,26 @@ main{display:block}
 .table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin-top:12px}
 .table-wrap table{margin-top:0}
 .casestudy{min-width:520px}
+
+/* MathJax display equations can be wider than a narrow card.  Keep the
+ * equation locally scrollable instead of widening the whole page. */
+mjx-container[display="true"]{
+  max-width:100%;
+  overflow-x:auto;
+  overflow-y:hidden;
+}
+
+/* Canonical release identifiers are intentionally long and must remain
+ * readable without forcing a mobile viewport wider than the device. */
+code{overflow-wrap:anywhere;word-break:break-word}
+
+.metric .v{overflow-wrap:anywhere;word-break:break-word}
+
+/* Slider for sensitivity views */
+input[type="range"]{-webkit-appearance:none;width:100%;height:6px;background:var(--line);border-radius:3px;outline:none;margin:10px 0}
+input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;background:var(--accent);cursor:pointer}
+input[type="range"]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:var(--accent);cursor:pointer;border:none}
+
+/* Formula highlight */
+.formula-box{background:#eef5fb;border:1px solid #c5dcef;border-radius:8px;padding:18px 22px;margin:12px 0;text-align:center}
+.formula-box mjx-container{font-size:1.15em}

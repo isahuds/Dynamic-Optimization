@@ -3,205 +3,129 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Calculator | Dynamic SEE Test Design Optimizer</title>
-<meta name="description" content="Calculate optimal beam flux for dynamic single-event effect testing.">
-<link rel="stylesheet" href="assets/style.css">
+<title>Pre-campaign design tool | Dynamic SEE Test Optimization</title>
+<meta name="description" content="Pick a flux for dynamic single-event effect testing by balancing crash-free coverage against time to reach your target fluence.">
+<link rel="stylesheet" href="assets/style.css?v=20260829">
 <script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['$$','$$']]},options:{skipHtmlTags:['script','noscript','style','textarea','pre']}};</script>
 <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 </head>
 <body>
-
-<header class="site-header">
-  <div class="wrap">
-    <h1>Dynamic SEE Test Design Optimizer</h1>
-    <p class="tagline">Maximise verified data per hour of beam time.</p>
-  </div>
-</header>
-
+<header class="site-header"><div class="wrap">
+  <h1>Dynamic SEE Test Optimization</h1>
+  <p class="tagline">Pick a flux for dynamic single-event effect testing by balancing crash-free coverage against time to reach your target fluence.</p>
+</div></header>
 <nav class="site-nav"><ul>
-  <li><a href="index.html" class="active">Calculator</a></li>
-  <li><a href="batch.html">Batch size</a></li>
-  <li><a href="unknown.html">Unknown cross sections</a></li>
-  <li><a href="background.html">Background</a></li>
-  <li><a href="validation.html">Validation</a></li>
+  <li><a href="index.html" class="active">Pre-campaign tool</a></li>
+  <li><a href="glossary.html">Glossary</a></li>
+  <li><a href="batch.html">Batch calculator</a></li>
+  <li><a href="unknown.html">Prospective statistics</a></li>
+  <li><a href="background.html">Model &amp; caveats</a></li>
+  <li><a href="validation.html">Campaign evidence</a></li>
 </ul></nav>
 
 <main class="wrap">
 
-<p class="page-intro">Beam time is expensive and finite. Push the flux too high and the device spends
-the campaign recovering from functional interrupts instead of producing verifiable results; push it
-too low and you pay for beam you barely use. Enter six measurable parameters below to find where you
-sit and what to change.</p>
+<section class="card">
+  <h2>Why this tool exists</h2>
+  <p>Dynamic single-event-effect testing runs real code on a device while it sits in a heavy-ion
+  beam, watching for crashes (SEFIs) that interrupt computation. Before you commit beam time, two
+  questions matter: <strong>how much flux can the device take before it spends more time recovering
+  than computing</strong>, and <strong>how long will it take to accumulate enough fluence to trust
+  your results</strong>? Those two questions pull in opposite directions — more flux means faster
+  fluence accumulation, but also more crashes. This tool turns that tension into one number: the
+  flux to dial in, held fixed for the whole run, and how long you'll need at the beam for it.</p>
+  <p class="note">Flux is the one lever this tool optimizes. Work-cycle timing is treated as fixed —
+  most test designs can't freely change it, and it's application-specific, not a property of any one
+  device. Batch size, where a test happens to support it, is a separate, optional refinement covered
+  on the <a href="batch.html">batch calculator</a>, not a requirement.</p>
+</section>
 
 <section class="card">
-  <div class="section-head">
-    <h2>Calculator</h2>
-    <div class="preset-row">
-      <button type="button" class="btn-preset" data-preset="msp430">Load worked example</button>
-      <button type="button" class="btn-preset ghost" data-preset="blank">Reset</button>
+  <h2>The formula</h2>
+  <p>Enter your bench-measured work-cycle time and pick how much crash-free coverage you need. The
+  tool gives you the interruption rate that satisfies it — the number to converge on at the beam.</p>
+  <div class="grid">
+    <div class="field"><label for="inputW">Work-cycle time W</label>
+      <div class="inputrow"><input type="number" id="inputW" min="0" step="any" value="1000"><span class="unit">ms</span></div>
+      <p class="help">Bench-measured, checkpoint-to-checkpoint. Fixed by your application — not
+      something this tool assumes you can tune.</p>
+    </div>
+    <div class="field"><label for="inputFluence">Target fluence &Phi;</label>
+      <div class="inputrow"><input type="number" id="inputFluence" min="0" step="any" value="1e7"><span class="unit">ions cm⁻²</span></div>
+      <p class="help">A common target experimenters run to. Adjust to your own statistical needs.</p>
+    </div>
+    <div class="field wide">
+      <label for="inputTheta">Target clean-cycle fraction &theta; = <span id="thetaValue">80</span>%</label>
+      <input type="range" id="inputTheta" min="30" max="99" step="1" value="80">
+      <p class="help">Probability a work cycle completes without an interruption. 80% is a
+      reasonable starting point, not a claimed standard — raise it for higher-confidence coverage,
+      lower it to reach your fluence target faster.</p>
     </div>
   </div>
-
-  <form id="calc" autocomplete="off">
-    <div class="grid">
-      <div class="field">
-        <label for="phi">Beam flux &phi;</label>
-        <div class="inputrow"><input type="number" id="phi" step="any"><span class="unit">ions&nbsp;cm<sup>&minus;2</sup>&nbsp;s<sup>&minus;1</sup></span></div>
-        <p class="help">Particle rate at the device. From facility dosimetry.</p>
-      </div>
-      <div class="field">
-        <label for="sigSefi">SEFI cross section &sigma;<sub>SEFI</sub></label>
-        <div class="inputrow"><input type="number" id="sigSefi" step="any"><span class="unit">cm<sup>2</sup></span></div>
-        <p class="help">Device-level interrupt susceptibility at this LET. Interrupts observed divided by fluence delivered, or read off a Weibull fit. <a href="unknown.html">Don't know it?</a></p>
-      </div>
-      <div class="field">
-        <label for="sigCirc">Observable cross section &sigma;<sub>circ</sub></label>
-        <div class="inputrow"><input type="number" id="sigCirc" step="any"><span class="unit">cm<sup>2</sup></span></div>
-        <p class="help">Cross section for the effect you are trying to measure. Sets event counts; does not affect the optimal flux, so a rough value is fine.</p>
-      </div>
-      <div class="field">
-        <label for="W">Work cycle duration <em>W</em></label>
-        <div class="inputrow"><input type="number" id="W" step="any"><span class="unit">s</span></div>
-        <p class="help">One full compute-plus-telemetry iteration. An interrupt anywhere inside it invalidates the whole cycle.</p>
-      </div>
-      <div class="field">
-        <label for="f">Targeting efficiency <em>f</em></label>
-        <div class="inputrow"><input type="number" id="f" step="any" min="0" max="1"><span class="unit">fraction (0&ndash;1)</span></div>
-        <p class="help">Fraction of the cycle actually spent exercising the circuit of interest. The lever your firmware controls.</p>
-      </div>
-      <div class="field">
-        <label for="R">Nominal recovery cost <em>R</em></label>
-        <div class="inputrow"><input type="number" id="R" step="any"><span class="unit">s</span></div>
-        <p class="help">Time to recover from one interrupt, beyond the destroyed cycle, absent further interrupts. Weight automatic and manual recovery by how often each occurs.</p>
-      </div>
-      <div class="field wide">
-        <label for="Ntarget">Target number of verified observations</label>
-        <div class="inputrow"><input type="number" id="Ntarget" step="any"><span class="unit">events</span></div>
-        <p class="help">How many confirmed events you need for adequate statistics. Converts rates into beam-time hours.</p>
-      </div>
-      <div class="field wide toggle-field">
-        <label class="toggle">
-          <input type="checkbox" id="exposed" checked>
-          <span><strong>The beam stays on during recovery</strong> (in-beam automatic resynchronisation)</span>
-        </label>
-        <p class="help">Leave ticked unless the beam is genuinely paused, or the device shielded, for the whole
-        recovery sequence. Under irradiation a further interrupt restarts recovery, so effective recovery time is
-        \(R_{\text{eff}}=(e^{\lambda R}-1)/\lambda\), which grows sharply with flux. Unticking is the optimistic
-        assumption and will overstate the flux you should run. <a href="background.html#recovery">Why this matters.</a></p>
-      </div>
-    </div>
-  </form>
-</section>
-
-<section class="card" id="results">
-  <h2>Results</h2>
-  <div class="verdict" id="verdict"></div>
-  <h3>Where you are now</h3>
-  <div class="metrics" id="metricsNow"></div>
-  <h3>Recommended operating point</h3>
-  <div class="metrics" id="metricsOpt"></div>
-  <h3>Yield curve</h3>
-  <p class="help chartnote">Effective data rate against flux. The marker shows your current setting; the peak is the optimum.</p>
-  <canvas id="chart" width="900" height="340" aria-label="Yield versus flux curve"></canvas>
-  <div id="warnings"></div>
+  <div class="formula-box">
+    $$\lambda_{\text{target}} = \frac{-\ln(\theta)}{W}$$
+  </div>
+  <div class="metrics" id="formulaOutputs"></div>
+  <p class="note">To find the flux that gives you this &lambda;: pilot at a candidate flux, measure
+  &lambda; directly (triggers ÷ beam-on time), and adjust up or down. Two or three short pilots
+  usually converge. See <a href="background.html">Model &amp; caveats</a> for the pileup effect that
+  puts a ceiling on how far you can push it, and the <a href="glossary.html">glossary</a> for any
+  term here that isn't clear.</p>
 </section>
 
 <section class="card">
-  <h2>Reading the results</h2>
-  <h3>Interrupts per work cycle, <em>x</em></h3>
-  <p>The single most useful diagnostic: how many interrupts you expect during one attempt at
-  producing a result. Dimensionless, with a natural target near <strong>0.2 to 0.5</strong>.</p>
-  <div class="table-wrap"><table class="bands">
-    <thead><tr><th>Value of <em>x</em></th><th>Meaning</th><th>What to do</th></tr></thead>
-    <tbody>
-      <tr class="band-low"><td>below 0.05</td><td>Under-driven. Almost every cycle completes, but you are buying more beam time than you need.</td><td>Raise flux, or lengthen the work cycle.</td></tr>
-      <tr class="band-good"><td>0.05 to 1.0</td><td>Well matched. You lose some cycles, but the throughput gain outweighs the loss.</td><td>Fine tune toward <em>u</em>*.</td></tr>
-      <tr class="band-high"><td>above 1.0</td><td>Over-driven. Most cycles are destroyed before they finish and the campaign becomes a recovery loop.</td><td>Reduce flux, shorten the cycle, or make recovery cheaper.</td></tr>
-    </tbody>
+  <h2>Worked example: this campaign's device</h2>
+  <p>This campaign fitted a full pileup curve (&lambda; as a function of flux) from a 35-run flux
+  sweep — most test campaigns won't have that luxury, so treat this as an illustration of the
+  procedure, not a general shortcut. Using the inputs above against this device's fitted response:</p>
+  <div class="metrics" id="exampleOutputs"></div>
+  <div id="qualityNote"></div>
+  <h3>How the target trades off against wall time</h3>
+  <p class="note">Loosening &theta; lets you push flux higher and finish faster; tightening it does
+  the opposite. Neither direction is free — this is the tradeoff from
+  <a href="background.html">Model &amp; caveats</a> made concrete for your own inputs.</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>&theta;</th><th>Required &lambda;</th><th>Flux</th><th>Binding constraint</th><th>Wall time to &Phi;</th></tr></thead>
+    <tbody id="thetaSweepTable"></tbody>
   </table></div>
-  <h3>Throughput relative to achievable, &eta;<sub>rel</sub></h3>
-  <p>The percentage of the best possible data rate you currently get, holding everything fixed except
-  flux. <strong>Above 90&percnt;</strong> means flux is not your bottleneck and effort belongs
-  elsewhere. <strong>Below 50&percnt;</strong> means flux is genuinely mis-set and correcting it is
-  the cheapest improvement available.</p>
-  <h3>What flux cannot fix</h3>
-  <p>Optimal flux only rescues the third factor. The other two are design choices: raise <em>f</em>,
-  since every extra percent of duty cycle in the circuit of interest is an equal percent more data
-  with no interrupt penalty, and lower <em>R</em>, since recovery cost both reduces throughput and
-  drags the optimal flux downward.</p>
 </section>
 
 <section class="card">
-  <h2>Symbol reference</h2>
-  <h3>Inputs you supply</h3>
-  <div class="table-wrap"><table class="symbols">
-    <thead><tr><th>Symbol</th><th>Name</th><th>Units</th><th>Meaning and how to measure it</th></tr></thead>
-    <tbody>
-      <tr><td>\(\phi\)</td><td>Flux</td><td>ions cm<sup>&minus;2</sup> s<sup>&minus;1</sup></td>
-          <td>Particle rate arriving at the device surface. Read from facility dosimetry.</td></tr>
-      <tr><td>\(\sigma_{\text{SEFI}}\)</td><td>SEFI cross section</td><td>cm<sup>2</sup></td>
-          <td>Device-level susceptibility to a functional interrupt: the effective target area a single ion must hit to interrupt the device. Count interrupts, divide by delivered fluence. Varies with LET.</td></tr>
-      <tr><td>\(\sigma_{\text{circ}}\)</td><td>Observable cross section</td><td>cm<sup>2</sup></td>
-          <td>Same idea for the specific effect you are measuring in the circuit of interest, such as a corrupted result. Sets how many events you collect. <strong>Does not shift the optimal flux.</strong></td></tr>
-      <tr><td>\(W\)</td><td>Work cycle duration</td><td>s</td>
-          <td>One complete compute-and-report iteration. An interrupt anywhere inside it invalidates the whole cycle. Mean of your logged per-iteration times.</td></tr>
-      <tr><td>\(f\)</td><td>Targeting efficiency</td><td>dimensionless, 0 to 1</td>
-          <td>Fraction of the work cycle spent exercising the circuit of interest. From per-iteration timing: compute time divided by total iteration time.</td></tr>
-      <tr><td>\(R\)</td><td>Nominal recovery cost</td><td>s</td>
-          <td>Mean time to recover from one interrupt, beyond the destroyed cycle, absent further interrupts.</td></tr>
-      <tr><td>\(N\)</td><td>Target event count</td><td>events</td>
-          <td>How many confirmed observations you need for adequate statistics.</td></tr>
-    </tbody>
-  </table></div>
+  <h2>Design levers, in order</h2>
+  <ul>
+    <li><strong>Flux — the primary lever.</strong> Chosen once, held fixed for the whole run. This
+    tool's formula is built around it.</li>
+    <li><strong>Batch size — optional, secondary.</strong> Only relevant if your test architecture
+    supports a tunable checkpoint interval. Refines throughput at a flux you've already chosen; does
+    not change the flux decision. See the <a href="batch.html">batch calculator</a>.</li>
+    <li><strong>Clock throttling — a real lever, not a free knob.</strong> Changes the compute-to
+    -telemetry ratio and the hardware-usage profile, not just the timing. This campaign found
+    statistically significant heterogeneity across FRAM configurations (p=0.0001) tied to a
+    confirmed buffer-persistence mechanism — match flight configuration where affordable, and
+    disclose any departure. See <a href="validation.html">Campaign evidence</a>.</li>
+  </ul>
+</section>
 
-  <h3>Quantities the tool derives</h3>
-  <div class="table-wrap"><table class="symbols">
-    <thead><tr><th>Symbol</th><th>Name</th><th>Units</th><th>Definition and how to read it</th></tr></thead>
-    <tbody>
-      <tr><td>\(\lambda\)</td><td>Interrupt rate</td><td>s<sup>&minus;1</sup></td>
-          <td>\(\lambda=\phi\,\sigma_{\text{SEFI}}\). Interrupts per second at this flux.</td></tr>
-      <tr><td>\(x\)</td><td>Interrupts per work cycle</td><td>dimensionless</td>
-          <td>\(x=\phi\,\sigma_{\text{SEFI}}\,W=\lambda W\). The main diagnostic; target roughly 0.2 to 0.5.</td></tr>
-      <tr><td>\(R_{\text{eff}}\)</td><td>Effective recovery time</td><td>s</td>
-          <td>\(R_{\text{eff}}=(e^{\lambda R}-1)/\lambda\) when the beam stays on during recovery, because a further interrupt restarts it. Equals \(R\) only if recovery is protected. Grows very fast with flux.</td></tr>
-      <tr><td>\(\rho\)</td><td>Recovery cost ratio</td><td>dimensionless</td>
-          <td>\(\rho=R_{\text{eff}}/W\). How many work cycles' worth of time one interrupt costs.</td></tr>
-      <tr><td>\(\eta\)</td><td>Observation efficiency</td><td>dimensionless, 0 to 1</td>
-          <td>\(\eta=e^{-x}/[1+\rho(1-e^{-x})]\). Fraction of the ideal data rate surviving interrupts and recovery. \(\eta=1\) would mean no interrupts at all.</td></tr>
-      <tr><td>\(\dot{\Phi}_{\text{eff}}\)</td><td><strong>Effective fluence rate</strong></td>
-          <td>ions cm<sup>&minus;2</sup> s<sup>&minus;1</sup></td>
-          <td>\(\dot{\Phi}_{\text{eff}}=\phi f\eta\). <strong>The central output.</strong> Of all the fluence you are paying for, the part that actually lands on the circuit of interest during a cycle that completes and is verified. Everything else is wasted: delivered while the wrong block was active, or during a cycle later destroyed. The ratio \(\dot{\Phi}_{\text{eff}}/\phi=f\eta\) is your overall beam-time utilisation.</td></tr>
-      <tr><td>\(u^{*}\)</td><td>Optimal interrupts per cycle</td><td>dimensionless</td>
-          <td>Value of \(x\) maximising throughput at a given \(\rho\). Solves \((1-u^{*})(1+\rho)=\rho e^{-u^{*}}\).</td></tr>
-      <tr><td>\(\phi_{\text{opt}}\)</td><td>Optimal flux</td><td>ions cm<sup>&minus;2</sup> s<sup>&minus;1</sup></td>
-          <td>\(\phi_{\text{opt}}=u^{*}/(\sigma_{\text{SEFI}}W)\) for protected recovery; numeric when exposed.</td></tr>
-      <tr><td>\(\eta_{\text{rel}}\)</td><td>Throughput vs achievable</td><td>dimensionless, 0 to 1</td>
-          <td>Current data rate divided by the rate at \(\phi_{\text{opt}}\). Above 90&percnt; means flux is not the bottleneck.</td></tr>
-    </tbody>
-  </table></div>
-  <p class="note">Event rate follows by multiplying the effective fluence rate by the observable cross
-  section: \(\text{events per second}=\dot{\Phi}_{\text{eff}}\,\sigma_{\text{circ}}\). Units check:
-  \(\mathrm{cm^{-2}s^{-1}}\times\mathrm{cm^{2}}=\mathrm{s^{-1}}\).</p>
+<section class="card">
+  <h2>Campaign evidence</h2>
+  <div class="metrics" id="campaignMetrics"></div>
 </section>
 
 <section class="card">
   <h2>Where to go next</h2>
   <div class="next-links">
-    <a class="next-link" href="batch.html"><b>Batch size &rarr;</b><span>Batching is the second lever on \(x\). Find the batch size that maximises throughput.</span></a>
-    <a class="next-link" href="unknown.html"><b>Unknown cross sections &rarr;</b><span>Plan a campaign on a new part without knowing \(\sigma_{\text{SEFI}}\) in advance.</span></a>
-    <a class="next-link" href="background.html"><b>Background &rarr;</b><span>Where the model comes from, what it assumes, and where it breaks.</span></a>
-    <a class="next-link" href="validation.html"><b>Validation &rarr;</b><span>Six firmware configurations from a heavy-ion campaign, and an independent audit.</span></a>
+    <a class="next-link" href="glossary.html"><b>Glossary →</b><span>Every term on this page, defined.</span></a>
+    <a class="next-link" href="batch.html"><b>Batch calculator →</b><span>The optional, secondary batch-size refinement, interactively.</span></a>
+    <a class="next-link" href="background.html"><b>Model &amp; caveats →</b><span>The renewal-reward derivation, pileup, and why the two objectives above don't resolve without your &theta;.</span></a>
+    <a class="next-link" href="validation.html"><b>Campaign evidence →</b><span>Tier 1+2 counting, operational statistics, heterogeneity, and flux relationship.</span></a>
   </div>
 </section>
-
 </main>
 
 <footer class="site-footer"><div class="wrap">
-  <p>Companion tool to a RADECS&nbsp;2026 submission on dynamic SEE test design. IU Center for Reliable and Trusted Electronics.</p>
-  <p class="note">Model output is a planning aid, not a substitute for a qualification test plan.</p>
+  <p>Companion analysis for Hudson et al., "Design Strategies for Dynamic Single-Event Effect Testing of Algorithmic Computation." IU Center for Reliable and Trusted Electronics.</p>
 </div></footer>
-
-<script src="assets/model.js"></script>
-<script src="assets/main.js"></script>
+<script src="assets/model.js?v=20260829"></script>
+<script src="assets/main.js?v=20260829"></script>
 </body>
 </html>

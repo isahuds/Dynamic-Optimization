@@ -1,76 +1,91 @@
-/* Pilot-run calculator for the unknown-cross-section page.
- *
- * Turns two counts anyone can take during a short pilot run, interrupts
- * observed and work cycles attempted, into the operating point x and a flux
- * scaling recommendation, without ever needing sigma_SEFI in advance.
- * sigma_SEFI falls out as a by-product.
+/* Prospective seven-gate Poisson reporting calculator.
+ * The current campaign observables fail these gates; this UI is for a future
+ * measurement whose numerator and denominator contract is established first.
  */
 (function () {
   "use strict";
   var S = window.SEE;
-  var IDS = ["pInt", "pCyc", "pPhi", "pW", "pTarget"];
-  var read;
+  var LABELS = {
+    poissonEligible: "Poisson event process is eligible",
+    physicalCrossSectionEligible: "physical cross-section interpretation is eligible",
+    independenceEstablished: "event independence is established",
+    numeratorAvailable: "numerator is available",
+    denominatorAvailable: "denominator is available",
+    unitWindowCompatible: "event unit and exposure window are compatible",
+    opportunityObserved: "an observation opportunity actually occurred"
+  };
 
-  // Exact Poisson (Garwood) interval for a count, used on the interrupt count.
-  function poissonLo(n) {
-    if (n === 0) return 0;
-    // Wilson-Hilferty approximation to the chi-square quantile, adequate here.
-    var a = n, z = 1.959964;
-    return a * Math.pow(1 - 1 / (9 * a) - z / (3 * Math.sqrt(a)), 3);
-  }
-  function poissonHi(n) {
-    var a = n + 1, z = 1.959964;
-    return a * Math.pow(1 - 1 / (9 * a) + z / (3 * Math.sqrt(a)), 3);
+  function gates() {
+    var out = {};
+    S.GATE_KEYS.forEach(function (key) {
+      out[key] = document.getElementById("gate-" + key).checked;
+    });
+    return out;
   }
 
   function update() {
-    var el = document.getElementById("pilotOut");
-    var wEl = document.getElementById("pilotWarn");
-    var v = read();
-    if (!v) {
-      el.innerHTML = '<p class="help">Enter positive values above.</p>';
-      wEl.innerHTML = ""; return;
+    var countElement = document.getElementById("eventCount");
+    var exposureElement = document.getElementById("exposure");
+    var countText = countElement.value.trim();
+    var exposureText = exposureElement.value.trim();
+    var count = countText === "" ? null : Number(countText);
+    var exposure = exposureText === "" ? null : Number(exposureText);
+    var countBad = count !== null && (!Number.isInteger(count) || count < 0);
+    countElement.classList.toggle("invalid", countBad);
+    exposureElement.classList.remove("invalid");
+    if (countBad) {
+      document.getElementById("poissonOut").innerHTML = '<p class="help">Event count must be a nonnegative integer or blank when the numerator is unavailable.</p>';
+      document.getElementById("poissonStatus").innerHTML = "";
+      return;
     }
-    var xObs = v.pInt / v.pCyc;
-    var sig  = xObs / (v.pPhi * (v.pW / 1000));
-    var scale = v.pTarget / xObs;
-    var phiNew = v.pPhi * scale;
 
-    var xLo = poissonLo(v.pInt) / v.pCyc, xHi = poissonHi(v.pInt) / v.pCyc;
+    var result;
+    try {
+      result = S.poissonRate95(count, exposure, gates());
+    } catch (error) {
+      exposureElement.classList.toggle("invalid", /exposure/.test(error.message));
+      countElement.classList.toggle("invalid", /count/.test(error.message));
+      document.getElementById("poissonOut").innerHTML = '<p class="help">' + error.message + ".</p>";
+      document.getElementById("poissonStatus").innerHTML = "";
+      return;
+    }
 
-    el.innerHTML =
-      S.metric("Observed interrupts per cycle, x", xObs.toFixed(4), "",
-        "95% interval " + xLo.toFixed(4) + " to " + xHi.toFixed(4), true) +
-      S.metric("Recommended flux", S.sci(phiNew), " cm⁻²s⁻¹",
-        (scale >= 1 ? "increase by " + scale.toFixed(1) + "×" : "reduce by " + (1 / scale).toFixed(1) + "×"), true) +
-      S.metric("Implied σ_SEFI", S.sci(sig), " cm²", "free by-product: x / (φ·W)") +
-      S.metric("Cycles surviving now", S.pct(Math.exp(-xObs)), "", "at the pilot flux") +
-      S.metric("Cycles surviving at target", S.pct(Math.exp(-v.pTarget)), "", "after scaling") +
-      S.metric("Interrupt rate now", S.sci(v.pPhi * sig), " s⁻¹", "λ = φ σ");
+    var pointSub = result.releaseStatus === "released_upper_limit" ? "not reported for an eligible zero-event result" : "n / Φ";
+    var intervalValue = result.ci95Lower == null ? "—" : "[" + S.sci(result.ci95Lower) + ", " + S.sci(result.ci95Upper) + "]";
+    var upperSub = result.releaseStatus === "released_upper_limit" ? "one-sided 95%; 2.995732273553991 / Φ" : "not applicable";
+    document.getElementById("poissonOut").innerHTML =
+      S.metric("Point estimate", S.sci(result.pointEstimate), " cm²", pointSub, result.pointEstimate != null) +
+      S.metric("Two-sided exact 95% Garwood interval", intervalValue, " cm²", result.ci95Lower == null ? "not reported" : "positive count only") +
+      S.metric("Zero-event upper limit", S.sci(result.zeroEventUpperLimit), " cm²", upperSub, result.zeroEventUpperLimit != null) +
+      S.metric("Release status", result.releaseStatus, "", result.intervalConvention);
 
-    var w = [];
-    if (v.pInt < 20) {
-      w.push(["Too few interrupts for a reliable estimate",
-        "You have " + v.pInt + ". The 95% interval on x spans " + xLo.toFixed(4) + " to " + xHi.toFixed(4) +
-        ", a factor of " + (xHi / Math.max(xLo, 1e-9)).toFixed(1) + ". Run the pilot longer, aiming for at " +
-        "least 20 to 30 interrupts, before scaling flux."]);
+    if (result.failedGates.length) {
+      document.getElementById("poissonStatus").innerHTML = S.warnBox(
+        "Numerical fields withheld",
+        "Failed gates: " + result.failedGates.map(function (key) { return LABELS[key]; }).join("; ") + ". An unavailable or no-opportunity denominator is not a zero-event exposure and receives no limit.",
+        true
+      );
+    } else if (result.releaseStatus === "released_upper_limit") {
+      document.getElementById("poissonStatus").innerHTML = S.warnBox(
+        "Eligible zero-event result",
+        "Only the conventional one-sided 95% upper limit is reported. There is no σ=0 point estimate and no two-sided interval."
+      );
+    } else {
+      document.getElementById("poissonStatus").innerHTML = S.warnBox(
+        "Eligible positive-count result",
+        "The point estimate and exact two-sided 95% Garwood interval are reported. Systematic fluence and LET uncertainty remain separate inputs to the scientific result."
+      );
     }
-    if (scale > 5) {
-      w.push(["Large jump recommended",
-        "Scaling flux by " + scale.toFixed(1) + "× in one step will overshoot if σ_SEFI is not constant with " +
-        "flux, which is exactly what happens as a device approaches sustained interrupt clustering. Step up " +
-        "in factors of two or three and recount x at each stop.", true]);
-    }
-    if (xObs > 1) {
-      w.push(["Pilot is already over-driven",
-        "More than one interrupt is expected per work cycle, so most cycles never complete. Reduce flux " +
-        "rather than increase it, whatever the target says.", true]);
-    }
-    wEl.innerHTML = w.map(function (a) { return S.warnBox(a[0], a[1], a[2]); }).join("");
   }
 
-  document.addEventListener("DOMContentLoaded", function () {
-    read = S.bindInputs(IDS, update);
+  function init() {
+    ["eventCount", "exposure"].concat(S.GATE_KEYS.map(function (key) { return "gate-" + key; })).forEach(function (id) {
+      var element = document.getElementById(id);
+      element.addEventListener("input", update);
+      element.addEventListener("change", update);
+    });
     update();
-  });
+  }
+
+  document.addEventListener("DOMContentLoaded", init);
 })();
