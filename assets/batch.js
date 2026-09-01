@@ -17,20 +17,15 @@
     if (isNaN(w0) || w0 <= 0 || isNaN(ts) || ts <= 0 || isNaN(lambda) || lambda <= 0) return;
     if (isNaN(recovery) || recovery < 0) recovery = 0;
 
-    var origW0 = S.W0;
-    var origTS = S.TS;
-    var bstarCont = (Math.sqrt(2 * w0 / lambda) - w0) / ts;
-    var wstar = Math.sqrt(2 * w0 / lambda);
+    var bstarCont = S.bstarFormula(lambda, w0, ts);
+    var wstar = S.wstarFormula(lambda, w0);
 
-    var bestB = 1, bestT = 0;
-    var wc = function (b) { return w0 + ts * b; };
-    var tp = function (b) { return b * lambda / Math.expm1(lambda * wc(b)); };
-    for (var b = 1; b <= 500; b++) {
-      var t = tp(b);
-      if (t > bestT) { bestT = t; bestB = b; }
-    }
+    var exact = S.optimalBatchExact(lambda, 500, w0, ts);
+    var bestB = exact.batch, bestT = exact.throughput;
 
-    var cost = function (b) { return Math.expm1(lambda * wc(b)) * (1 / lambda + recovery) / b; };
+    var wc = function (b) { return S.workCycle(b, w0, ts); };
+    var tp = function (b) { return S.throughput(b, lambda, w0, ts); };
+    var cost = function (b) { return S.costPerResult(b, lambda, recovery, w0, ts); };
 
     document.getElementById("batchMetrics").innerHTML =
       S.metric("B* (formula)", bstarCont.toFixed(1), "", "continuous throughput optimum; upper bound", true) +

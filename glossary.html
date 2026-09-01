@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Glossary | Dynamic SEE Test Optimization</title>
 <meta name="description" content="Plain-language and precise definitions for the terms used across the site: flux, fluence, work cycle, interruption rate, pileup, batch size, and the statistics conventions.">
-<link rel="stylesheet" href="assets/style.css?v=20260829">
+<link rel="stylesheet" href="assets/style.css?v=20260901">
 <script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['$$','$$']]},options:{skipHtmlTags:['script','noscript','style','textarea','pre']}};</script>
 <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 </head>
@@ -41,7 +41,7 @@ the page where the term is derived, calibrated, or used.</p>
   <h3>Fluence (\(\Phi\))</h3>
   <p>The total exposure delivered over an entire run: how many ions per square centimeter landed on
   the device from start to finish. Where flux is a rate (per second), fluence is a running total with
-  no time dimension &mdash; it is what you accumulate, not how fast you accumulate it.</p>
+  no time dimension. It is what you accumulate, not how fast you accumulate it.</p>
   <p><strong>Technical:</strong> ions·cm\(^{-2}\), typically the target quantity for a qualification
   campaign (e.g. \(10^{7}\) cm\(^{-2}\)). Fluence and flux relate through wall-clock time: \(\Phi=\phi
   T\). See <a href="unknown.html">prospective statistics</a> for how fluence enters as the exposure
@@ -49,7 +49,7 @@ the page where the term is derived, calibrated, or used.</p>
 
   <h3>Work-cycle time (\(W\))</h3>
   <p>How long one checkpoint-to-checkpoint interval takes on the bench, when nothing goes wrong. You
-  measure this directly with a stopwatch on your own test article; it is not something the model
+  measure this directly with a stopwatch on your own test article. It is not something the model
   derives for you.</p>
   <p><strong>Technical:</strong> \(W\) is the free-running cycle duration in seconds. In the site's
   general flux-primary formula, \(W\) is treated as a single measured, application-fixed number and is
@@ -68,14 +68,14 @@ the page where the term is derived, calibrated, or used.</p>
   event rate.</p>
   <p><strong>Technical:</strong> \(\lambda\) is the rate of work-interrupting triggers per
   beam-burst second. It is a deliberate proxy for the true single-event functional interrupt (SEFI)
-  rate, \(\lambda_{\mathrm{SEFI}}\), not identical to it: every trigger costs one recovery whether or
+  rate, \(\lambda_{\mathrm{SEFI}}\), not identical to it. Every trigger costs one recovery whether or
   not it corresponds to an independent physical initiation. See the rate hierarchy in <a
   href="background.html">Model &amp; caveats</a> for why the design model deliberately uses
   \(\lambda\) rather than \(\lambda_{\mathrm{SEFI}}\).</p>
 
   <h3>Clean-cycle fraction (\(\theta\))</h3>
   <p>The probability that one work cycle finishes start-to-end without getting interrupted. This is
-  the adjustable quality-target slider on the <a href="index.html">pre-campaign tool</a>: pick how
+  the adjustable quality-target slider on the <a href="index.html">pre-campaign tool</a>. Pick how
   clean you want your cycles to be, and the tool backs out the flux and rate that achieve it. The
   default of 80% is a reasonable starting point built into the tool, not a claimed community
   standard.</p>
@@ -83,41 +83,41 @@ the page where the term is derived, calibrated, or used.</p>
   target \(\theta\) and measured \(W\) is \(\lambda=-\ln(\theta)/W\).</p>
 
   <h3>SEFI (Single-Event Functional Interrupt)</h3>
-  <p>A radiation-induced upset that disrupts how the device is operating &mdash; not just a bit
-  flipping somewhere in memory, but the device's function actually breaking &mdash; such that it needs
+  <p>A radiation-induced upset that disrupts how the device is operating, not just a bit
+  flipping somewhere in memory, but the device's function actually breaking, such that it needs
   some form of recovery (automatic reset, resynchronization, or manual intervention) before it can
   resume useful work.</p>
 
   <h3>SEU (Single-Event Upset)</h3>
   <p>A single bit or memory element flipping state due to a radiation strike. An SEU does not
-  necessarily disrupt device operation the way a SEFI does: a flipped bit in an unused memory location
+  necessarily disrupt device operation the way a SEFI does. A flipped bit in an unused memory location
   may never be observed functionally, while a SEFI by definition interrupts work in progress.</p>
 
   <h3>Pileup</h3>
   <p>At high enough flux, a second ion can strike the device while it is still recovering from the
   first one. That second strike does not register as its own separate interruption, because the device
   was already down. The practical consequence: the <em>observed</em> trigger rate \(\lambda(\phi)\)
-  does not keep climbing forever as flux increases &mdash; it rises, peaks, and then falls, even
+  does not keep climbing forever as flux increases. It rises, peaks, and then falls, even
   though the true underlying susceptibility has not changed.</p>
   <p><strong>Technical:</strong> pileup is modeled as a paralyzable process,
-  \(\lambda(\phi)=k\phi\,e^{-k\phi\tau}\), fitted on this campaign's data with \(R^2=0.37\)
+  \(\lambda(\phi)=k\phi\,e^{-k\phi\tau}\), fitted on this campaign's data with \(R^2=0.386\)
   (outperforming flat-saturation and power-law alternatives). See <a href="background.html">flux and
   pileup</a> and the <a href="validation.html">flux relationship</a> evidence.</p>
 
   <h3>Dead time (\(\tau\))</h3>
   <p>The paralysis window right after a trigger, during which the device is busy recovering and any
   further strikes go uncounted as separate interruptions. This is the mechanism behind pileup.</p>
-  <p><strong>Technical:</strong> fitted campaign value \(\tau\approx0.441\) s (0.4406 s in the model
+  <p><strong>Technical:</strong> fitted campaign value \(\tau\approx0.4275\) s (0.4275 s in the model
   constants). Larger \(\tau\) means pileup sets in at lower flux.</p>
 
   <h3>Pileup onset / peak flux (\(\phi^{*}\))</h3>
   <p>The flux at which the observed trigger rate is at its highest. Below this flux, a higher beam
   intensity gives you a proportionally higher, trustworthy trigger rate. Above it, the device is
   spending so much of its time recovering that the operational rate stops faithfully tracking the
-  device's true susceptibility &mdash; pushing the flux higher there gets you fewer, not more,
+  device's true susceptibility. Pushing the flux higher there gets you fewer, not more,
   resolvable events.</p>
-  <p><strong>Technical:</strong> \(\phi^{*}=1/(k\tau)\), fitted to \(\approx2.1\times10^{4}\)
-  cm\(^{-2}\)s\(^{-1}\) (21,234 cm\(^{-2}\)s\(^{-1}\) in the model constants) on this campaign. The
+  <p><strong>Technical:</strong> \(\phi^{*}=1/(k\tau)\), fitted to \(\approx2.2\times10^{4}\)
+  cm\(^{-2}\)s\(^{-1}\) (21,826 cm\(^{-2}\)s\(^{-1}\) in the model constants) on this campaign. The
   fitted peak falls inside an untested gap between the campaign's low- and high-flux clusters, so
   treat it as an estimate to be confirmed with a pilot run, not a certified boundary.</p>
 
@@ -126,7 +126,7 @@ the page where the term is derived, calibrated, or used.</p>
   factor. This is meant to be a property of the device itself, roughly independent of how hard you're
   running the beam.</p>
   <p><strong>Technical:</strong> \(k\) is the per-ion trigger cross section in the small-flux (linear)
-  limit of the pileup model, fitted to \(k\approx1.069\times10^{-4}\) cm\(^2\) (1.0688\(\times10^{-4}\)
+  limit of the pileup model, fitted to \(k\approx1.072\times10^{-4}\) cm\(^2\) (1.072\(\times10^{-4}\)
   in the model constants) on the within-firmware subset with the widest flux range. See <a
   href="background.html">Model &amp; caveats</a> for the fit details.</p>
 </section>
@@ -137,8 +137,8 @@ the page where the term is derived, calibrated, or used.</p>
   <h3>Batch size (\(B\))</h3>
   <p>How many results the device produces between one checkpoint and the next, for test setups where
   that checkpoint interval is something you can actually configure. This is a <strong>secondary,
-  optional</strong> lever: if your test architecture has a fixed, non-configurable work cycle, batch
-  size is not a knob you have, and you don't need it &mdash; just measure \(W\) directly as described
+  optional</strong> lever. If your test architecture has a fixed, non-configurable work cycle, batch
+  size is not a knob you have, and you don't need it. Just measure \(W\) directly as described
   under <a href="background.html">work-cycle time</a> above and use the flux-primary formula on the
   <a href="index.html">pre-campaign tool</a>.</p>
   <p><strong>Technical:</strong> for architectures that do support a tunable checkpoint interval, work
@@ -148,21 +148,21 @@ the page where the term is derived, calibrated, or used.</p>
   <h3>\(B^{*}\)</h3>
   <p>The batch size that squeezes the most verified throughput out of a flux you've already chosen,
   for architectures where batch size is tunable. It is presented on this site as an <strong>upper
-  bound</strong>, not a single recommended number: bias your actual choice toward the lower half of a
+  bound</strong>, not a single recommended number. Bias your actual choice toward the lower half of a
   factor-of-two window around it.</p>
   <p><strong>Technical:</strong> \(B^{*}=(\sqrt{2W_0/\lambda}-W_0)/t_s\), derived from the renewal-reward
   model under the assumption that batch-validity probability \(p_V\) is independent of batch size. The
   campaign's heterogeneity finding gives reason to doubt that assumption, and the correction is
-  sign-determinate: if \(p_V\) actually declines with batch size, the true risk-aware optimum sits at
+  sign-determinate. If \(p_V\) actually declines with batch size, the true risk-aware optimum sits at
   or below \(B^{*}\), never above it. See the <a href="background.html">\(p_V(B)\) caveat</a> for the
   full argument.</p>
 
   <h3>Recovery cost / mean recovery time (\(\bar R\))</h3>
   <p>The average time it costs, in seconds, to recover from one interruption. A slower recovery makes
   every run take longer in absolute terms, but it does not change which batch size or flux is
-  best &mdash; it scales the whole throughput curve down without moving its peak.</p>
+  best. It scales the whole throughput curve down without moving its peak.</p>
   <p><strong>Technical:</strong> \(\bar R\) enters only the denominator of the verified-output-rate
-  expression \(\dot N_V(B)=\dfrac{Bp_V}{\mathrm{expm1}[\lambda W(B)]\cdot[1/\lambda+\bar R]}\); it does
+  expression \(\dot N_V(B)=\dfrac{Bp_V}{\mathrm{expm1}[\lambda W(B)]\cdot[1/\lambda+\bar R]}\). It does
   not appear in the stationary condition that determines \(B^{*}\). See <a
   href="validation.html">Recovery</a> for the campaign's measured recovery-time distributions.</p>
 </section>
@@ -171,7 +171,7 @@ the page where the term is derived, calibrated, or used.</p>
   <h2>Time, cross section, and LET</h2>
 
   <h3>Wall-clock time (\(T\))</h3>
-  <p>The actual real-world time a run will take to reach a target fluence at a chosen flux &mdash;
+  <p>The actual real-world time a run will take to reach a target fluence at a chosen flux, which is
   what shows up on the beam-time invoice.</p>
   <p><strong>Technical:</strong> \(T=\Phi/\phi\), the direct consequence of flux being a rate and
   fluence being its time integral.</p>
@@ -202,8 +202,8 @@ the page where the term is derived, calibrated, or used.</p>
   <p><strong>Technical:</strong> for a positive event count, this site uses the two-sided exact
   Garwood interval at 95% confidence, built from the chi-square quantile function. For zero counts, no
   two-sided interval is defined, so the site reports the one-sided 95% upper limit
-  \(-\ln(0.05)/\Phi=2.995732274/\Phi\) instead. Both conventions are applied only after a count passes
-  the seven eligibility gates described in <a href="unknown.html">prospective statistics</a>; a
+  \(-\ln(0.05)/\Phi=2.995732273553991/\Phi\) instead. Both conventions are applied only after a count passes
+  the seven eligibility gates described in <a href="unknown.html">prospective statistics</a>. A
   count that fails those gates is withheld rather than converted into a number.</p>
 </section>
 
@@ -217,6 +217,6 @@ the page where the term is derived, calibrated, or used.</p>
 <footer class="site-footer"><div class="wrap">
   <p>Companion analysis for Hudson et al., "Design Strategies for Dynamic Single-Event Effect Testing of Algorithmic Computation." IU Center for Reliable and Trusted Electronics.</p>
 </div></footer>
-<script src="assets/model.js?v=20260829"></script>
+<script src="assets/model.js?v=20260901"></script>
 </body>
 </html>

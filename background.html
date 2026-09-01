@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Model &amp; caveats | Dynamic SEE Test Optimization</title>
 <meta name="description" content="Renewal-reward derivation, pileup model, rate hierarchy, and why B* is an upper bound.">
-<link rel="stylesheet" href="assets/style.css?v=20260829">
+<link rel="stylesheet" href="assets/style.css?v=20260901">
 <script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['$$','$$']]},options:{skipHtmlTags:['script','noscript','style','textarea','pre']}};</script>
 <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 </head>
@@ -34,15 +34,15 @@
   <p>That gives one pull toward <strong>low flux</strong>: fewer interruptions, more of your work
   cycles survive clean. The other pull comes from wanting to reach a target fluence \(\Phi\) in
   minimum wall-clock time, \(T=\Phi/\phi\), which favors <strong>high flux</strong> with no ceiling
-  of its own. It is tempting to look for a flux that balances both at once — but they do not meet
+  of its own. It is tempting to look for a flux that balances both at once, but they do not meet
   in the middle. Using the verified-output rate \(\dot N_V\) below, the number of clean cycles
   accumulated by the time a fixed fluence target is reached keeps improving as flux falls toward
-  zero: an unboundedly long, unboundedly low-flux campaign racks up unboundedly many clean cycles.
+  zero. An unboundedly long, unboundedly low-flux campaign racks up unboundedly many clean cycles.
   There is no interior flux that is simultaneously best for both objectives.</p>
   <p>That is why \(\theta\) has to come from the experimenter, not from the physics. Fixing a target
   clean-cycle fraction turns an open-ended tradeoff into a single well-posed answer: the highest flux
   consistent with your own quality bar, and the wall time that flux implies. Loosening \(\theta\)
-  trades coverage for speed; tightening it does the reverse. Neither direction is a mistake — it is
+  trades coverage for speed. Tightening it does the reverse. Neither direction is a mistake. It is
   a choice this page can only surface, not make for you.</p>
 </section>
 
@@ -50,19 +50,20 @@
   <h2>Pileup, in plain terms</h2>
   <p>At high enough flux, a new ion can strike while the device is still recovering from the last
   one. That second strike does not register as a separate interruption, because there was no
-  running work cycle left for it to interrupt — the device was already down. So the
-  <em>measured</em> interruption rate \(\lambda\) does not climb forever with flux: it rises, peaks,
+  running work cycle left for it to interrupt. The device was already down. So the
+  <em>measured</em> interruption rate \(\lambda\) does not climb forever with flux. It rises, peaks,
   and can fall again, even though the true rate of physical strikes keeps climbing.</p>
-  <p>This campaign measured that curve directly — 35 runs spanning a 3-decade flux range, fitted to
+  <p>This campaign measured that curve directly, with 35 runs spanning a 3-decade flux range, fitted to
   \(\lambda(\phi)=k\phi e^{-k\phi\tau}\) below. Most test campaigns will not have the beam time for a
   sweep like that, and do not need it. The practical version: pilot at a candidate flux, measure
   \(\lambda\) directly, and watch what happens as you raise flux across a couple of pilots. If
   \(\lambda\) keeps climbing, you are still on the safe side. If it flattens or drops, you have
-  crossed into pileup — back off rather than push further, since the apparent time savings from more
+  crossed into pileup. Back off rather than push further, since the apparent time savings from more
   flux is not real past that point.</p>
   <p>This is also where the two formulas above meet. If your target \(\lambda_{\text{target}}\) is
   higher than the interruption rate ever gets even at the pileup peak, your clean-cycle target was
-  never the binding constraint — pileup fidelity is, and the honest recommendation is to cap flux at
+  never the binding constraint. Pileup fidelity is the binding constraint instead, and the honest
+  recommendation is to cap flux at
   the peak (or comfortably below it), not to claim an unreachable target is satisfied. The
   <a href="index.html">pre-campaign tool</a> handles this distinction automatically and tells you
   which constraint is actually binding for your numbers.</p>
@@ -71,8 +72,8 @@
 <section class="card">
   <h2>The batch-size refinement (optional): renewal-reward model</h2>
   <p>Everything below applies only to test architectures with a <strong>tunable checkpoint
-  interval</strong> — where an experimenter can choose how many results happen between checkpoints.
-  It refines throughput at a flux already chosen above; it does not change the flux decision, and a
+  interval</strong>, where an experimenter can choose how many results happen between checkpoints.
+  It refines throughput at a flux already chosen above. It does not change the flux decision, and a
   test with a fixed, non-configurable work cycle can skip this section entirely.</p>
   <p>A work cycle of \(B\) results takes \(W(B)=W_0+Bt_s\) seconds when no interruption occurs.
   If interruptions arrive as a Poisson process at rate \(\lambda\), the expected number of complete
@@ -95,17 +96,17 @@
   <p>That branch does not describe this campaign. The recovery record shows automatic resynchronization
   beginning within a fraction of a second (median 0.165 s), not at the next batch boundary. The
   boundary branch also implies a recovery rate of \((1-e^{-\lambda W})/W\), which falls below \(\lambda\)
-  as \(W\) grows: it says long cycles stop interruptions from costing recoveries, which they do not.</p>
+  as \(W\) grows. It says long cycles stop interruptions from costing recoveries, which they do not.</p>
   <p>The boundary branch is retired. The immediate-abort model is operationally calibrated.</p>
 </section>
 
 <section class="card">
   <h2>The \(p_V(B)\) caveat: why B* is an upper bound</h2>
   <p>The model assumes the probability a batch survives uninterrupted is independent of batch size.
-  The campaign's heterogeneity finding (Section IV of the paper) gives direct reason to doubt that:
-  exposure-normalized FRAM builds are not statistically homogeneous (p=0.0001), and a confirmed
+  The campaign's heterogeneity finding (Section IV of the paper) gives direct reason to doubt that
+  assumption. Exposure-normalized FRAM builds are not statistically homogeneous (p=0.0001), and a confirmed
   buffer-persistence mechanism tracks the storage medium, not the batch size.</p>
-  <p>The correction is sign-determinate: if \(p_V\) declines with batch size, the risk-aware optimum
+  <p>The correction is sign-determinate. If \(p_V\) declines with batch size, the risk-aware optimum
   sits <strong>at or below \(B^*\)</strong>, never above it. This is why the recommendation is to deploy
   a portfolio of batch sizes weighted toward the lower half of a factor-of-two window around \(B^*\).
   The yield minimum is shallow there, so the throughput penalty for being conservative is small.</p>
@@ -120,16 +121,71 @@
   <div class="table-wrap"><table>
     <thead><tr><th>Parameter</th><th>Value</th><th>Interpretation</th></tr></thead>
     <tbody>
-      <tr><td>\(k\)</td><td>\(1.069\times10^{-4}\) cm²</td><td>per-ion trigger cross section in the small-flux limit</td></tr>
-      <tr><td>\(\tau\)</td><td>0.441 s</td><td>dead time per trigger (paralysis window)</td></tr>
-      <tr><td>\(\phi^{*}=1/(k\tau)\)</td><td>\(\approx2.1\times10^{4}\) cm\(^{-2}\)s\(^{-1}\)</td><td>peak trigger rate (pileup onset)</td></tr>
+      <tr><td>\(k\)</td><td>\(1.072\times10^{-4}\) cm²</td><td>per-ion trigger cross section in the small-flux limit</td></tr>
+      <tr><td>\(\tau\)</td><td>0.4275 s</td><td>dead time per trigger (paralysis window)</td></tr>
+      <tr><td>\(\phi^{*}=1/(k\tau)\)</td><td>\(21{,}826\pm1{,}448\) cm\(^{-2}\)s\(^{-1}\) (6.6%, delta method)</td><td>peak trigger rate (pileup onset)</td></tr>
     </tbody>
   </table></div>
-  <p>The fit quality is \(R^2=0.37\), which is the best among the models tried (flat-saturation
-  \(R^2=0.11\), power law \(R^2=0.004\)) but not a strong absolute fit. The fitted peak falls inside
-  the untested gap between the campaign's low- and high-flux clusters.</p>
+  <p>Exposure time here is a per-run measure built from logged compute-call windows, more precise
+  than a single facility-reported elapsed value; the coarser measure gives a statistically
+  indistinguishable fit (\(k=1.069\times10^{-4}\), \(\tau=0.4406\) s, peak \(21{,}234\pm1{,}438\)),
+  with a slightly worse \(R^2\) (0.366 vs. 0.386 below), so the more precise measure is used
+  throughout.</p>
+  <p>The fit quality is \(R^2=0.386\), which is the best among the models tried (flat-saturation
+  \(R^2=0.11\), power law \(R^2=0.004\)) but not a strong absolute fit, and fragile in its parameter
+  estimates specifically: two individual runs account for most of the gap to \(R^2=0.44\) when either
+  is excluded, shifting \(k\) and \(\tau\) by 15% and 9%. The model choice itself is not fragile the
+  same way. Refitting with both runs excluded still favors this paralyzable form by a wider
+  margin, not a narrower one. The fitted peak falls inside the untested gap between the campaign's
+  low- and high-flux clusters.</p>
   <p>The key insight for design: \(B^*\) tuned at one flux costs increasingly more as flux moves from
   where it was calibrated. A short pilot at the target flux is essential.</p>
+  <p><strong>Why this tool never recommends a flux above \(\phi^*\).</strong> The clean-cycle fraction
+  \(\theta=e^{-\lambda W}\) is computed from whichever \(\lambda\) you give it, and \(\lambda\) itself
+  is suppressed by pileup once flux passes \(\phi^*\): a device that is failing to keep up looks
+  <em>quieter</em>, not louder, because closely spaced triggers merge into fewer counted recoveries.
+  Computing \(\theta\) from that suppressed rate does not merely lose precision near the peak; it gets
+  systematically more optimistic exactly where it should become less trustworthy, since the formula
+  has no way to know the rate it was given is already an undercount. This is not hypothetical: at one
+  campaign configuration's own tested flux, 2.3\(\times\) its fitted peak, the model predicts the
+  observed rate to within 7.1% (the fit is trustworthy at this exact point, not a wild
+  extrapolation), and the reported clean-cycle fraction from raw \(\lambda\) was 0.965; the same
+  fit's intrinsic, pre-suppression rate implies the true figure is 0.676, a 28.9-percentage-point
+  gap and a 9.3\(\times\) understatement of the interrupted-cycle fraction. Across the full 35-run
+  sweep this gap is near zero below the fitted peak and grows past it, reaching 0.60
+  (0.986 reported vs. 0.387 intrinsic) at the sweep's highest-flux tail. A leave-one-out check on the
+  two most influential fit points (above) moves these numbers to roughly 0.25–0.33 (published 0.29),
+  8.1–10.4\(\times\) (published 9.3\(\times\)), and 0.54–0.65 (published 0.60) respectively — stable
+  in direction and rough scale, not pinned down to better than about \(\pm15\%\). This is why
+  <a href="index.html">the flux recommendation</a> only ever searches the rising branch, up to
+  \(\phi^*\), returning the peak itself as a flux ceiling rather than a flux past it: any
+  \(\theta\) computed from an observed rate above \(\phi^*\) cannot be trusted at face value. If you
+  independently compute a clean-cycle fraction from a rate measured above this device's own fitted
+  peak, elsewhere or with a different device, treat it the same way.</p>
+</section>
+
+<section class="card">
+  <h2>Why "just exclude recovery time" doesn't fix this</h2>
+  <p>A natural next idea: if recovery time is what's being suppressed into the observed rate, why not
+  define exposure time to exclude it, and fit \(k\)/\(\tau\) against an "up-time-only" denominator
+  instead? This was checked directly. The pileup shape survives under that alternative denominator
+  (paralyzable still wins, \(R^2=0.307\) vs. \(0.386\)), and the peak flux itself is nearly unchanged
+  (19,742 vs. 21,826, about 7%, each within the other's 95% confidence interval) — but \(k\) and
+  \(\tau\) individually shift by roughly 53% and 30% and remain strongly anti-correlated under both
+  conventions (\(\rho\approx-0.92\)). Peak flux, not \(k\) or \(\tau\) alone, is the portable
+  quantity across exposure-time conventions.</p>
+  <p>More fundamentally, the exclusion is circular for this experimental design: how much time to
+  exclude for a given interruption depends on the same interruption rate the fit is trying to
+  estimate, so building it into the fit's own denominator feeds the model its own answer as an
+  input. Excluding recovery time from the accounting while the beam and device both stay engaged the
+  whole time does not change what the device was actually exposed to — only <em>physically</em>
+  removing the device from the beam during recovery (for example, an automated actuator that
+  withdraws the device on fault detection and returns it once recovery is confirmed) breaks the
+  circularity, because it removes real exposure rather than relabeling its accounting. Doing this
+  does not eliminate the blind spot above; it shrinks the risk to the actuator's own detection
+  latency, the delay between a fault occurring and the actuator acting on it, which this campaign
+  never measured directly and which would need to be weighed against the added mechanical and
+  accounting complexity of repeated pause/resume cycles.</p>
 </section>
 
 <section class="card">
@@ -143,7 +199,7 @@
       <tr><td>\(\lambda_{\mathrm{SEFI}}\)</td><td>Physical SEFI rate</td><td>Device-side initiation evidence with independence adjudication</td><td>Withheld</td></tr>
     </tbody>
   </table></div>
-  <p>The design model uses \(\lambda\), not \(\lambda_{\mathrm{SEFI}}\). This is deliberate: the trigger
+  <p>The design model uses \(\lambda\), not \(\lambda_{\mathrm{SEFI}}\). This is deliberate. The trigger
   rate is what actually interrupts work and determines throughput, regardless of whether each trigger
   corresponds to a physically independent event.</p>
 </section>
@@ -161,7 +217,7 @@
   </table></div>
   <p>The model needs event-free compute + telemetry cost, not the full observed cycle including host
   wait. The descriptive timing was fitted with equal weight to survivor-conditioned configuration
-  medians at B=1, 50, and 200; the calibrated timing uses per-result cost decomposition from the
+  medians at B=1, 50, and 200. The calibrated timing uses per-result cost decomposition from the
   facility records, fitted to the all-FRAM 16-MHz series at B=1 and B=50 with B=200 held out for
   validation.</p>
 </section>
@@ -176,6 +232,6 @@
 <footer class="site-footer"><div class="wrap">
   <p>Companion analysis for Hudson et al., "Design Strategies for Dynamic Single-Event Effect Testing of Algorithmic Computation." IU Center for Reliable and Trusted Electronics.</p>
 </div></footer>
-<script src="assets/model.js?v=20260829"></script>
+<script src="assets/model.js?v=20260901"></script>
 </body>
 </html>

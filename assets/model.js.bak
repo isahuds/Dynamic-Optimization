@@ -1,7 +1,0 @@
-/*
- * Deprecated public history marker.
- *
- * The former implementation is preserved in Git history and in the local
- * assets/model.js.pre_rebuild snapshot. This file intentionally contains no
- * executable code, scientific defaults, calculator logic, or browser API.
- */

@@ -68,9 +68,9 @@
   ]);
 
   var PILEUP = Object.freeze({
-    k: 1.0688e-4,
-    tau: 0.4406,
-    peakFlux: 21234
+    k: 1.072e-4,
+    tau: 0.4275,
+    peakFlux: 21826
   });
 
   var VALIDATION = Object.freeze([
@@ -92,58 +92,63 @@
     framSramRatio: 4.30,
     framSramRatioCI: [2.87, 6.40],
     fluxExponent: -0.96,
-    pileupR2: 0.37
+    pileupR2: 0.386
   });
 
   function requireFinitePositive(value, name) {
     if (!Number.isFinite(value) || value <= 0) throw new RangeError(name + " must be finite and positive");
   }
 
-  function workCycle(batchSize) {
+  function workCycle(batchSize, w0, ts) {
+    if (w0 == null) w0 = W0;
+    if (ts == null) ts = TS;
     requireFinitePositive(batchSize, "batch size");
-    return W0 + TS * batchSize;
+    return w0 + ts * batchSize;
   }
 
-  function bstarFormula(lambda) {
+  function bstarFormula(lambda, w0, ts) {
+    if (w0 == null) w0 = W0;
+    if (ts == null) ts = TS;
     requireFinitePositive(lambda, "lambda");
-    return (Math.sqrt(2 * W0 / lambda) - W0) / TS;
+    return (Math.sqrt(2 * w0 / lambda) - w0) / ts;
   }
 
-  function wstarFormula(lambda) {
+  function wstarFormula(lambda, w0) {
+    if (w0 == null) w0 = W0;
     requireFinitePositive(lambda, "lambda");
-    return Math.sqrt(2 * W0 / lambda);
+    return Math.sqrt(2 * w0 / lambda);
   }
 
-  function throughput(batchSize, lambda) {
+  function throughput(batchSize, lambda, w0, ts) {
     requireFinitePositive(batchSize, "batch size");
     requireFinitePositive(lambda, "lambda");
-    var w = workCycle(batchSize);
+    var w = workCycle(batchSize, w0, ts);
     return batchSize * lambda / Math.expm1(lambda * w);
   }
 
-  function costPerResult(batchSize, lambda, recoveryProxy) {
+  function costPerResult(batchSize, lambda, recoveryProxy, w0, ts) {
     requireFinitePositive(batchSize, "batch size");
     requireFinitePositive(lambda, "lambda");
     if (recoveryProxy == null) recoveryProxy = 0;
     if (!Number.isFinite(recoveryProxy) || recoveryProxy < 0) throw new RangeError("recovery proxy must be finite and nonnegative");
-    var w = workCycle(batchSize);
+    var w = workCycle(batchSize, w0, ts);
     return Math.expm1(lambda * w) * (1 / lambda + recoveryProxy) / batchSize;
   }
 
-  function optimalBatchExact(lambda, bMax) {
+  function optimalBatchExact(lambda, bMax, w0, ts) {
     if (bMax == null) bMax = 500;
     requireFinitePositive(lambda, "lambda");
     var bestB = 1;
-    var bestT = throughput(1, lambda);
+    var bestT = throughput(1, lambda, w0, ts);
     for (var b = 2; b <= bMax; b++) {
-      var t = throughput(b, lambda);
+      var t = throughput(b, lambda, w0, ts);
       if (t > bestT) { bestT = t; bestB = b; }
     }
     return {
       batch: bestB,
       throughput: bestT,
-      workCycle: workCycle(bestB),
-      bstarContinuous: bstarFormula(lambda)
+      workCycle: workCycle(bestB, w0, ts),
+      bstarContinuous: bstarFormula(lambda, w0, ts)
     };
   }
 
@@ -496,7 +501,6 @@
     pileupRate: pileupRate,
     bstarAtFlux: bstarAtFlux,
     poissonRate95: poissonRate95,
-    poisson95: poissonRate95,
     chiSquareQuantile: chiSquareQuantile,
     sci: sci,
     dur: dur,

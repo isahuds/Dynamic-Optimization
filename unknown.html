@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Prospective statistics | Dynamic SEE Test Optimization</title>
 <meta name="description" content="Seven-gate fail-closed Poisson reporting with exact Garwood intervals and conventional zero-event upper limits.">
-<link rel="stylesheet" href="assets/style.css?v=20260829">
+<link rel="stylesheet" href="assets/style.css?v=20260901">
 <script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['$$','$$']]},options:{skipHtmlTags:['script','noscript','style','textarea','pre']}};</script>
 <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 </head>
@@ -32,7 +32,7 @@ window, exposure denominator, and observation opportunity are established.</p>
   <h2>The 95% policy</h2>
   <ul>
     <li>Eligible \(n>0\): report \(n/\Phi\) with the exact two-sided 95% Garwood interval.</li>
-    <li>Eligible \(n=0\): report no point estimate and no two-sided interval; report only the
+    <li>Eligible \(n=0\): report no point estimate and no two-sided interval. Report only the
     conventional one-sided upper limit \(-\ln(0.05)/\Phi=2.995732273553991/\Phi\).</li>
     <li>Any failed gate, including no observation opportunity: leave every numerical field blank.
     Do not report \(\sigma=0\) and do not manufacture an upper limit.</li>
@@ -53,11 +53,11 @@ window, exposure denominator, and observation opportunity are established.</p>
     </div>
     <div class="field wide toggle-field"><label class="toggle"><input type="checkbox" id="gate-poissonEligible"><span>Poisson event process is eligible.</span></label></div>
     <div class="field wide toggle-field"><label class="toggle"><input type="checkbox" id="gate-physicalCrossSectionEligible"><span>Physical cross-section interpretation is eligible.</span></label></div>
-    <div class="field wide toggle-field"><label class="toggle"><input type="checkbox" id="gate-independenceEstablished"><span>Event independence is established; persistent states and retries are not counted repeatedly.</span></label></div>
+    <div class="field wide toggle-field"><label class="toggle"><input type="checkbox" id="gate-independenceEstablished"><span>Event independence is established. Persistent states and retries are not counted repeatedly.</span></label></div>
     <div class="field wide toggle-field"><label class="toggle"><input type="checkbox" id="gate-numeratorAvailable"><span>The defined physical-event numerator is available.</span></label></div>
     <div class="field wide toggle-field"><label class="toggle"><input type="checkbox" id="gate-denominatorAvailable"><span>The exposure denominator is available.</span></label></div>
     <div class="field wide toggle-field"><label class="toggle"><input type="checkbox" id="gate-unitWindowCompatible"><span>The event unit and fluence window are compatible.</span></label></div>
-    <div class="field wide toggle-field"><label class="toggle"><input type="checkbox" id="gate-opportunityObserved"><span>An observation opportunity actually occurred; this is not an unavailable/no-opportunity row.</span></label></div>
+    <div class="field wide toggle-field"><label class="toggle"><input type="checkbox" id="gate-opportunityObserved"><span>An observation opportunity actually occurred. This is not an unavailable/no-opportunity row.</span></label></div>
   </div>
   <div class="metrics" id="poissonOut"></div>
   <div id="poissonStatus"></div>
@@ -70,9 +70,9 @@ window, exposure denominator, and observation opportunity are established.</p>
     <li><strong>Characterize the work cycle on the bench:</strong> measure \(W_0\), \(t_s\), and the
     firmware/configuration identity from event-free iterations.</li>
     <li><strong>Set the test configuration:</strong> match the flight firmware, clock, memory
-    placement, and workload as closely as affordable; disclose any departure.</li>
+    placement, and workload as closely as affordable. Disclose any departure.</li>
     <li><strong>Run a short pilot at the target flux:</strong> measure \(\lambda\) and compute
-    \(B^*=({\sqrt{2W_0/\lambda}-W_0})/{t_s}\); deploy a portfolio weighted low.</li>
+    \(B^*=({\sqrt{2W_0/\lambda}-W_0})/{t_s}\). Deploy a portfolio weighted low.</li>
     <li><strong>Check the active-time fraction:</strong> confirm the device is computing, not
     recovering. If the fraction is low, reduce flux or batch size.</li>
     <li><strong>Log telemetry that reveals device state:</strong> a state-changed flag (not just a
@@ -109,7 +109,7 @@ window, exposure denominator, and observation opportunity are established.</p>
 <footer class="site-footer"><div class="wrap">
   <p>Companion analysis for Hudson et al., "Design Strategies for Dynamic Single-Event Effect Testing of Algorithmic Computation." IU Center for Reliable and Trusted Electronics.</p>
 </div></footer>
-<script src="assets/model.js?v=20260829"></script>
-<script src="assets/pilot.js?v=20260829"></script>
+<script src="assets/model.js?v=20260901"></script>
+<script src="assets/pilot.js?v=20260901"></script>
 </body>
 </html>

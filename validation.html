@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Campaign evidence | Dynamic SEE Test Optimization</title>
 <meta name="description" content="Tier 1+2 counting census, operational statistics, recovery, heterogeneity, and flux relationship from the 2026 MSU campaign.">
-<link rel="stylesheet" href="assets/style.css?v=20260829">
+<link rel="stylesheet" href="assets/style.css?v=20260901">
 <script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['$$','$$']]},options:{skipHtmlTags:['script','noscript','style','textarea','pre']}};</script>
 <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 </head>
@@ -46,6 +46,11 @@
   <h2>Operational statistics</h2>
   <p>Per-configuration trigger rates, manifestation and recovery counts, and fluences are released in
   the paper's supplement (Tables S2 and S6). The trigger rates used by the batch-size model are:</p>
+  <p class="note">FRAM B=1, 1 MHz's tested flux for this table sits at 2.4&times; the fitted pileup
+  peak (see <a href="background.html">Flux and pileup</a>); its own observed \(\lambda=0.492\)
+  understates the intrinsic trigger rate at that flux by roughly an order of magnitude. This is the
+  correct rate for the burst-time-normalized ratio shown here, but should not be read as this
+  configuration's true interruption rate.</p>
   <div class="table-wrap"><table>
     <thead><tr><th>Configuration</th><th>B</th><th>Triggers</th><th>Burst (s)</th><th>λ (s⁻¹)</th></tr></thead>
     <tbody id="triggerRateTable"></tbody>
@@ -56,7 +61,7 @@
   <h2>Recovery</h2>
   <div class="metrics" id="recoveryMetrics"></div>
   <p>Escalation to manual intervention drives facility-time cost, not the automatic handshake. The
-  handshake/tool component is comparatively stable; the pause-to-next-beam-on interval is more
+  handshake/tool component is comparatively stable. The pause-to-next-beam-on interval is more
   variable. Pause purpose and operator causality are not labeled.</p>
   <div class="table-wrap"><table>
     <thead><tr><th>Endpoint</th><th>Population</th><th>Mean</th><th>Median</th></tr></thead>
@@ -73,7 +78,7 @@
   <h2>Heterogeneity</h2>
   <p>Exposure-normalized FRAM builds are <strong>not statistically homogeneous</strong> under Tier 1+2
   (p=0.0001). This is a real finding, not a classification artifact (checked and ruled out). Part of
-  the SRAM/FRAM contrast is a confirmed, source-grounded storage-buffer persistence mechanism; part
+  the SRAM/FRAM contrast is a confirmed, source-grounded storage-buffer persistence mechanism. Part
   is an honest, unresolved residual specific to FRAM_B1.</p>
   <div class="metrics" id="heterogeneityMetrics"></div>
   <p>The buffer-persistence mechanism: FRAM ECC protects stored data in the buffer, but not the CPU
@@ -87,7 +92,7 @@
   <h2>Flux relationship</h2>
   <p>The derived operational cross section scales as \(\sigma\propto\phi^{-0.96}\), consistent with a
   paralyzable pileup mechanism rather than simple saturation. The fitted pileup model
-  (\(R^2=0.37\)) substantially outperforms flat-saturation (\(R^2=0.11\)) and power-law
+  (\(R^2=0.386\)) substantially outperforms flat-saturation (\(R^2=0.11\)) and power-law
   (\(R^2=0.004\)) alternatives.</p>
   <div class="metrics" id="fluxMetrics"></div>
 </section>
@@ -128,7 +133,7 @@
 <footer class="site-footer"><div class="wrap">
   <p>Companion analysis for Hudson et al., "Design Strategies for Dynamic Single-Event Effect Testing of Algorithmic Computation." IU Center for Reliable and Trusted Electronics.</p>
 </div></footer>
-<script src="assets/model.js?v=20260829"></script>
+<script src="assets/model.js?v=20260901"></script>
 <script>
 (function () {
   "use strict";
@@ -142,7 +147,7 @@
         cfg.n + '</td><td>' + cfg.burst_s.toFixed(3) + '</td><td>' + cfg.lambda.toFixed(6) + '</td></tr>';
     }).join('') + '<tr style="border-top:2px solid var(--line)">' +
     S.POOLED.map(function (cfg) {
-      return '<tr><td><strong>' + cfg.label + '</strong></td><td>—</td><td>' +
+      return '<tr><td><strong>' + cfg.label + '</strong></td><td>N/A</td><td>' +
         cfg.n + '</td><td>' + cfg.burst_s.toFixed(3) + '</td><td>' + cfg.lambda.toFixed(6) + '</td></tr>';
     }).join('');
 
@@ -157,8 +162,8 @@
 
     document.getElementById("fluxMetrics").innerHTML =
       S.metric("Cross-section exponent", "σ ∝ φ⁻⁰·⁹⁶", "", "856-fold flux range") +
-      S.metric("Pileup peak", "∼2.1×10⁴ cm⁻² s⁻¹", "", "fitted 1/(kτ)") +
-      S.metric("Pileup R²", "0.37", "", "flat-saturation 0.11; power law 0.004");
+      S.metric("Pileup peak", "∼" + (S.PILEUP.peakFlux / 1e4).toFixed(1) + "×10⁴ cm⁻² s⁻¹", "", "fitted 1/(kτ)") +
+      S.metric("Pileup R²", C.pileupR2.toFixed(3), "", "flat-saturation 0.11; power law 0.004");
   });
 })();
 </script>

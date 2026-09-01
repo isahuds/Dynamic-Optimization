@@ -5,13 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Batch calculator (optional) | Dynamic SEE Test Optimization</title>
 <meta name="description" content="Optional secondary refinement: for test architectures with a tunable checkpoint interval, compute the throughput-optimal batch size at a flux you've already chosen.">
-<link rel="stylesheet" href="assets/style.css?v=20260829">
+<link rel="stylesheet" href="assets/style.css?v=20260901">
 <script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['$$','$$']]},options:{skipHtmlTags:['script','noscript','style','textarea','pre']}};</script>
 <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 </head>
 <body>
 <header class="site-header"><div class="wrap">
-  <h1>Batch-size calculator <small style="opacity:.75;font-weight:400">— optional</small></h1>
+  <h1>Batch-size calculator, <small style="opacity:.75;font-weight:400">optional</small></h1>
   <p class="tagline">A secondary refinement for tests with a tunable checkpoint interval, not a required step.</p>
 </div></header>
 <nav class="site-nav"><ul>
@@ -25,10 +25,10 @@
 
 <main class="wrap">
 <p class="page-intro">The <a href="index.html">pre-campaign tool</a>'s flux formula is the primary
-decision: it doesn't need or assume a tunable batch size. This calculator is for the subset of test
-architectures that <em>do</em> support a configurable checkpoint interval — it refines throughput at
+decision. It doesn't need or assume a tunable batch size. This calculator is for the subset of test
+architectures that <em>do</em> support a configurable checkpoint interval. It refines throughput at
 a flux you've already chosen. If your test's work cycle is fixed by the application, this page has
-nothing you need; the flux formula alone is enough.</p>
+nothing you need. The flux formula alone is enough.</p>
 
 <section class="card">
   <div class="section-head">
@@ -59,8 +59,8 @@ nothing you need; the flux formula alone is enough.</p>
     </div>
   </div>
 
-  <h3>Per-configuration presets</h3>
-  <p class="help">Set λ from a measured configuration. W₀ and tₛ stay at the values above.</p>
+  <h3>Presets</h3>
+  <p class="help">Set λ from a measured configuration, or from a pooled/aggregate value. W₀ and tₛ stay at the values above.</p>
   <div class="preset-row" id="configPresets"></div>
 </section>
 
@@ -68,7 +68,7 @@ nothing you need; the flux formula alone is enough.</p>
   <h2>Computed operating point</h2>
   <div class="metrics" id="batchMetrics"></div>
   <canvas id="batchChart" width="900" height="300" aria-label="Throughput versus batch size"></canvas>
-  <p class="note chartnote">Curve: normalized throughput \(B\lambda/\mathrm{expm1}[\lambda W(B)]\). The optimum is flat-bottomed; the penalty for
+  <p class="note chartnote">Curve: normalized throughput \(B\lambda/\mathrm{expm1}[\lambda W(B)]\). The optimum is flat-bottomed. The penalty for
   missing \(B^*\) by a factor of two is less than 20%.</p>
 </section>
 
@@ -95,7 +95,7 @@ nothing you need; the flux formula alone is enough.</p>
 <footer class="site-footer"><div class="wrap">
   <p>Companion analysis for Hudson et al., "Design Strategies for Dynamic Single-Event Effect Testing of Algorithmic Computation." IU Center for Reliable and Trusted Electronics.</p>
 </div></footer>
-<script src="assets/model.js?v=20260829"></script>
-<script src="assets/batch.js?v=20260829"></script>
+<script src="assets/model.js?v=20260901"></script>
+<script src="assets/batch.js?v=20260901"></script>
 </body>
 </html>
