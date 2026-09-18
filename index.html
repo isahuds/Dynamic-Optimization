@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Pre-campaign design tool | Dynamic SEE Test Optimization</title>
 <meta name="description" content="Pick a flux for dynamic single-event effect testing by balancing clean-cycle fraction against time to reach your target fluence.">
-<link rel="stylesheet" href="assets/style.css?v=20260901">
+<link rel="stylesheet" href="assets/style.css?v=20260911">
 <script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['$$','$$']]},options:{skipHtmlTags:['script','noscript','style','textarea','pre']}};</script>
 <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 </head>
@@ -17,7 +17,6 @@
 <nav class="site-nav"><ul>
   <li><a href="index.html" class="active">Pre-campaign tool</a></li>
   <li><a href="glossary.html">Glossary</a></li>
-  <li><a href="batch.html">Batch calculator</a></li>
   <li><a href="unknown.html">Prospective statistics</a></li>
   <li><a href="background.html">Model &amp; caveats</a></li>
   <li><a href="validation.html">Campaign evidence</a></li>
@@ -37,7 +36,7 @@
   <p class="note">Flux is the one lever this tool optimizes. Work-cycle timing is treated as fixed.
   Most test designs can't freely change it, and it's application-specific, not a property of any one
   device. Batch size, where a test happens to support it, is a separate, optional refinement covered
-  on the <a href="batch.html">batch calculator</a>, not a requirement.</p>
+  by the application, not a dial this tool assumes you can turn.</p>
 </section>
 
 <section class="card">
@@ -97,7 +96,7 @@
     tool's formula is built around it.</li>
     <li><strong>Batch size, optional and secondary.</strong> Only relevant if your test architecture
     supports a tunable checkpoint interval. Refines throughput at a flux you've already chosen, and
-    does not change the flux decision. See the <a href="batch.html">batch calculator</a>.</li>
+    does not change the flux decision.</li>
     <li><strong>Storage medium, a real confirmed hardware effect.</strong> This campaign found
     statistically significant heterogeneity across FRAM configurations (p=0.0001), tied to a
     confirmed buffer-persistence mechanism that tracks storage medium (FRAM vs. SRAM), not clock
@@ -120,7 +119,6 @@
   <h2>Where to go next</h2>
   <div class="next-links">
     <a class="next-link" href="glossary.html"><b>Glossary →</b><span>Every term on this page, defined.</span></a>
-    <a class="next-link" href="batch.html"><b>Batch calculator →</b><span>The optional, secondary batch-size refinement, interactively.</span></a>
     <a class="next-link" href="background.html"><b>Model &amp; caveats →</b><span>The renewal-reward derivation, pileup, and why the two objectives above don't resolve without your &theta;.</span></a>
     <a class="next-link" href="validation.html"><b>Campaign evidence →</b><span>Tier 1+2 counting, operational statistics, heterogeneity, and flux relationship.</span></a>
   </div>
@@ -130,7 +128,7 @@
 <footer class="site-footer"><div class="wrap">
   <p>Companion analysis for Hudson et al., "Design Strategies for Dynamic Single-Event Effect Testing of Algorithmic Computation." IU Center for Reliable and Trusted Electronics.</p>
 </div></footer>
-<script src="assets/model.js?v=20260901"></script>
-<script src="assets/main.js?v=20260901"></script>
+<script src="assets/model.js?v=20260911"></script>
+<script src="assets/main.js?v=20260911"></script>
 </body>
 </html>

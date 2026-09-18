@@ -46,12 +46,25 @@
     }).join("");
 
     var C = S.CAMPAIGN;
+    var thetas_m = S.CONFIGS.map(function (c) { return c.theta; });
+    var duties = S.CONFIGS.map(function (c) { return c.dutyFactor; });
+    var taus = S.CONFIGS.map(function (c) { return c.tau_s; });
+    var fmtRange = function (a, fixed) {
+      return Math.min.apply(null, a).toFixed(fixed) + "–" + Math.max.apply(null, a).toFixed(fixed);
+    };
     document.getElementById("campaignMetrics").innerHTML =
-      S.metric("Manifestation episodes", String(C.episodes), "", "Tier 1+2 primary (attributed OR clean-context)") +
-      S.metric("Admitted vectors", String(C.admittedVectors).replace(/\B(?=(\d{3})+(?!\d))/g, ","), "", "from " + C.episodes + " contiguous episodes") +
-      S.metric("Automatic SEFI recovery", (C.autoSuccessRate * 100).toFixed(1) + "%", "", "median " + S.dur(C.medianRecovery_s) + "; escalation drives facility cost") +
-      S.metric("FRAM/SRAM rate ratio", C.framSramRatio.toFixed(2), "", "[" + C.framSramRatioCI[0].toFixed(2) + ", " + C.framSramRatioCI[1].toFixed(2) + "] 95% CI") +
-      S.metric("Flux exponent", "σ ∝ φ" + S.sci(C.fluxExponent, 2).replace("×10", ""), "", "paralyzable pileup, not saturation");
+      S.metric("Measured clean-cycle fraction", fmtRange(thetas_m, 2), "",
+        "direct count over six builds, work cycle varied 41-fold") +
+      S.metric("Logged rates run optimistic by", "×" + S.OPTIMISM.factor.toFixed(2), "",
+        "[" + S.OPTIMISM.ci95[0].toFixed(2) + ", " + S.OPTIMISM.ci95[1].toFixed(2) + "] on cycles per lost cycle") +
+      S.metric("Recovery cost per lost cycle", fmtRange(taus, 2), "s",
+        "mean, not the " + S.dur(C.medianRecovery_s) + " programmed settle") +
+      S.metric("Test time yielding countable exposure", fmtRange(duties, 2), "",
+        "duty factor D at the measured recovery cost") +
+      S.metric("Pileup ceiling", S.sci(S.PILEUP.peakFlux), "cm⁻² s⁻¹",
+        "below the " + S.sci(5e4) + " these builds ran at; moves as 1/τ_d") +
+      S.metric("Automatic recovery restored function", (C.autoSuccessRate * 100).toFixed(1) + "%", "",
+        "scored on delivered work; " + (C.autoSuccessRateCensoredAsFailure * 100).toFixed(1) + "% if every censored case is a failure");
   }
 
   document.addEventListener("DOMContentLoaded", function () {

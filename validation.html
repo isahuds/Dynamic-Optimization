@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Campaign evidence | Dynamic SEE Test Optimization</title>
 <meta name="description" content="Tier 1+2 counting census, operational statistics, recovery, heterogeneity, and flux relationship from the 2026 MSU campaign.">
-<link rel="stylesheet" href="assets/style.css?v=20260901">
+<link rel="stylesheet" href="assets/style.css?v=20260911">
 <script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['$$','$$']]},options:{skipHtmlTags:['script','noscript','style','textarea','pre']}};</script>
 <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 </head>
@@ -17,7 +17,6 @@
 <nav class="site-nav"><ul>
   <li><a href="index.html">Pre-campaign tool</a></li>
   <li><a href="glossary.html">Glossary</a></li>
-  <li><a href="batch.html">Batch calculator</a></li>
   <li><a href="unknown.html">Prospective statistics</a></li>
   <li><a href="background.html">Model &amp; caveats</a></li>
   <li><a href="validation.html" class="active">Campaign evidence</a></li>
@@ -45,7 +44,7 @@
 <section class="card">
   <h2>Operational statistics</h2>
   <p>Per-configuration trigger rates, manifestation and recovery counts, and fluences are released in
-  the paper's supplement (Tables S2 and S6). The trigger rates used by the batch-size model are:</p>
+  the paper's supplement (Tables S2 and S6). The logged trigger rates are:</p>
   <p class="note">FRAM B=1, 1 MHz's tested flux for this table sits at 2.4&times; the fitted pileup
   peak (see <a href="background.html">Flux and pileup</a>); its own observed \(\lambda=0.492\)
   understates the intrinsic trigger rate at that flux by roughly an order of magnitude. This is the
@@ -125,7 +124,6 @@
 </section>
 
 <section class="card"><h2>Where to go next</h2><div class="next-links">
-  <a class="next-link" href="batch.html"><b>Batch calculator →</b><span>Use the calibrated model to plan your own experiment.</span></a>
   <a class="next-link" href="unknown.html"><b>Prospective statistics →</b><span>Apply the seven release gates before normalizing a count.</span></a>
 </div></section>
 </main>
@@ -133,7 +131,7 @@
 <footer class="site-footer"><div class="wrap">
   <p>Companion analysis for Hudson et al., "Design Strategies for Dynamic Single-Event Effect Testing of Algorithmic Computation." IU Center for Reliable and Trusted Electronics.</p>
 </div></footer>
-<script src="assets/model.js?v=20260901"></script>
+<script src="assets/model.js?v=20260911"></script>
 <script>
 (function () {
   "use strict";
@@ -153,17 +151,25 @@
 
     document.getElementById("recoveryMetrics").innerHTML =
       S.metric("Recovery attempts", String(C.recoveryAttempts).replace(/\B(?=(\d{3})+(?!\d))/g, ","), "", C.recoveryGroups + " operational groups") +
-      S.metric("Automatic success", (C.autoSuccessRate * 100).toFixed(1) + "%", "", "median " + S.dur(C.medianRecovery_s)) +
-      S.metric("Facility pause (median)", S.dur(C.medianFacilityPause_s), "", "mixed-purpose, episode-unlinked");
+      S.metric("Automatic success", (C.autoSuccessRate * 100).toFixed(1) + "%", "",
+        "scored on the next cycle actually delivered, not on the handshake") +
+      S.metric("Cost per lost cycle", S.dur(C.meanRecovery_s), "",
+        "mean episode; the " + S.dur(C.medianRecovery_s) + " median is the programmed settle") +
+      S.metric("Facility pause (median)", S.dur(C.medianFacilityPause_s), "", "escalated recoveries only; beam paused throughout");
 
     document.getElementById("heterogeneityMetrics").innerHTML =
-      S.metric("Homogeneity p-value", "0.0001", "", "FRAM builds under Tier 1+2") +
-      S.metric("FRAM/SRAM rate ratio", C.framSramRatio.toFixed(2), "", "[" + C.framSramRatioCI[0].toFixed(2) + ", " + C.framSramRatioCI[1].toFixed(2) + "] 95% CI");
+      S.metric("Corruption-event rate spread", "6.1-fold", "", "across six builds; a shared rate is rejected") +
+      S.metric("Four FRAM builds", "χ² = 22.8", "", "3 d.o.f., p < 0.0001; FRAM_B1_Throttled carries two thirds of it") +
+      S.metric("Functional-interrupt spread", "1.4-fold", "",
+        "χ² = 12.3 on 4 d.o.f., removed by 4.2% fluence uncertainty");
 
     document.getElementById("fluxMetrics").innerHTML =
-      S.metric("Cross-section exponent", "σ ∝ φ⁻⁰·⁹⁶", "", "856-fold flux range") +
-      S.metric("Pileup peak", "∼" + (S.PILEUP.peakFlux / 1e4).toFixed(1) + "×10⁴ cm⁻² s⁻¹", "", "fitted 1/(kτ)") +
-      S.metric("Pileup R²", C.pileupR2.toFixed(3), "", "flat-saturation 0.11; power law 0.004");
+      S.metric("Cross-section exponent", "σ ∝ φ⁻¹·⁰", "",
+        "over a 19.9-fold flux range at fixed LET and firmware") +
+      S.metric("Pileup peak", "∼" + (S.PILEUP.peakFlux / 1e4).toFixed(1) + "×10⁴ cm⁻² s⁻¹", "",
+        "1/(k·τ_d), LET " + S.PILEUP.letGroup) +
+      S.metric("Pileup fit R²", C.pileupR2.toFixed(3), "",
+        "LET-stratified; the earlier pooled fit confounded LET with flux and was withdrawn");
   });
 })();
 </script>

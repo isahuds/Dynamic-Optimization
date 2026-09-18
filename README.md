@@ -1,9 +1,17 @@
 # Dynamic SEE Test Optimization
 
+> **2026-09-11.** The model constants were corrected in this release. Versions before
+> `flux-primary-design-tool-v2-2026-09-11` computed with `W0 + ts = 32.222 ms`, the
+> contaminated work-cycle value the companion campaign audited and replaced on
+> 2026-09-05, so every flux, wall-clock time and batch size they produced was wrong.
+> See `UPDATE_PLAN_2026-09-11.md` for the full audit and the remaining work.
+
 Companion site for Hudson et al., "Design Strategies for Dynamic Single-Event Effect Testing
 of Algorithmic Computation" (RADECS 2026 / IEEE TNS). The site is a practical pre-campaign
-design tool: pick a flux by balancing crash-free coverage against time to reach a target
-fluence, with batch size demoted to an optional secondary refinement.
+design tool: pick a flux by balancing clean-cycle coverage against time to reach a target
+fluence. Batch size is not a lever here. It does set the work cycle, through `W = W0 + B*ts`,
+but the companion paper does not present a throughput-optimal batch size, because the
+probability that a batch survives uninterrupted may itself decline with batch size.
 
 ## The formula
 
@@ -29,38 +37,20 @@ the lower/rising-branch root; the upper root is spurious. If `theta` is looser t
 interruption rate ever gets even at the pileup peak, your quality target was never the binding
 constraint — pileup fidelity is, and flux should be capped there instead.
 
-### Batch size (optional, secondary)
-
-For test architectures with a tunable checkpoint interval, the renewal-reward checkpoint model
-gives the throughput-optimal batch size as
-
-```
-B* = (sqrt(2 W0 / lambda) - W0) / ts
-```
-
-This campaign's calibrated values (`W0 = 25.145 ms`, `ts = 7.077 ms`, `lambda = 0.416 s^-1`)
-give `B* ~ 46`. B* is an upper bound, not a point estimate — the silent-corruption probability
-`p_V` may decline with batch size, and the correction is sign-determinate: the risk-aware
-optimum sits at or below B*, never above it. This refines throughput at a flux already chosen;
-it does not change the flux decision, and tests with a fixed, non-configurable work cycle can
-skip it entirely.
-
 ## Site structure
 
 | Page | Purpose |
 | --- | --- |
 | `index.html` | Pre-campaign design tool: flux-primary formula, worked example, theta-vs-wall-time tradeoff |
 | `glossary.html` | Every term used across the site, defined |
-| `batch.html` | Optional secondary batch-size calculator, for tunable-checkpoint architectures |
 | `unknown.html` | Prospective seven-gate Poisson reporting and pre-campaign checklist |
-| `background.html` | Flux-primary derivation, pileup explainer, batch-size renewal-reward model, rate hierarchy |
+| `background.html` | Flux-primary derivation, pileup explainer, rate hierarchy, why excluding recovery time does not fix the rate |
 | `validation.html` | Tier 1+2 counting census, operational statistics, recovery, heterogeneity |
 
 | Asset | Purpose |
 | --- | --- |
-| `assets/model.js` | Flux-primary formula, pileup model, sourced facility flux ranges, batch-size refinement, Garwood intervals |
+| `assets/model.js` | Flux-primary formula, duty-factor extension, pileup model, per-build measured theta, sourced facility flux ranges, Garwood intervals |
 | `assets/main.js` | Index page rendering: live formula inputs, worked example, theta sweep table |
-| `assets/batch.js` | Batch-size calculator: inputs, presets, throughput curve, comparison table |
 | `assets/pilot.js` | Prospective seven-gate statistics UI |
 | `assets/style.css` | Shared presentation |
 
@@ -94,9 +84,8 @@ python3 -m http.server 8731
 ```
 
 Then inspect <http://localhost:8731> at desktop and narrow mobile widths. Browser QA must
-confirm that all six pages load without console errors, the theta slider on the pre-campaign
-tool updates the required-lambda and worked-example outputs live, the batch calculator's
-per-configuration preset buttons update lambda and recompute B*, all seven unchecked gates on
+confirm that all five pages load without console errors, the theta slider on the pre-campaign
+tool updates the required-lambda and worked-example outputs live, all seven unchecked gates on
 the prospective-statistics page withhold numerical output, and an eligible zero shows only
 `2.995732273553991 / fluence`.
 
@@ -112,11 +101,13 @@ the prospective-statistics page withhold numerical output, and an eligible zero 
 ```
 theta_default = 0.80         (clean-cycle-fraction default; a starting point, not a standard)
 fluence_default = 1e7        (ions cm^-2, common experimenter target)
-W0      = 0.025145 s         (event-free fixed overhead, batch-size refinement only)
-ts      = 0.007077 s         (marginal time per result, batch-size refinement only)
-lambda  = 0.415918 s^-1      (pooled FRAM 16 MHz trigger rate)
-B*      = 45.580             (continuous optimum; upper bound; optional refinement)
-k       = 1.0688e-4 cm^2     (pileup per-ion trigger cross section)
-tau     = 0.4406 s           (pileup dead time)
+lambda_logged = 0.415918 s^-1  (pooled FRAM 16 MHz, read off the recovery log; BIASED LOW)
+lambda_fitted = 0.751298 s^-1  (same builds, fitted to measured clean-cycle fractions)
+optimism      = 1.625          (x1.63 [1.45, 1.85]; apply when lambda comes from a log)
+k             = 1.15653e-4 cm^2 (pileup, LET 2.3-4.1 group; only k is fitted)
+tau_d         = 0.33185 s      (pileup dead time; MEASURED, which is why recovery speed
+                                moves the ceiling)
+phi*          = 26056 cm^-2 s^-1 (pileup ceiling = 1/(k*tau_d))
+tau           = 0.58-1.28 s    (mean recovery cost per lost cycle, per build)
 phi*    = ~2.1e4 cm^-2 s^-1  (pileup onset / peak flux)
 ```

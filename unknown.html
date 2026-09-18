@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Prospective statistics | Dynamic SEE Test Optimization</title>
 <meta name="description" content="Seven-gate fail-closed Poisson reporting with exact Garwood intervals and conventional zero-event upper limits.">
-<link rel="stylesheet" href="assets/style.css?v=20260901">
+<link rel="stylesheet" href="assets/style.css?v=20260911">
 <script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['$$','$$']]},options:{skipHtmlTags:['script','noscript','style','textarea','pre']}};</script>
 <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 </head>
@@ -17,7 +17,6 @@
 <nav class="site-nav"><ul>
   <li><a href="index.html">Pre-campaign tool</a></li>
   <li><a href="glossary.html">Glossary</a></li>
-  <li><a href="batch.html">Batch calculator</a></li>
   <li><a href="unknown.html" class="active">Prospective statistics</a></li>
   <li><a href="background.html">Model &amp; caveats</a></li>
   <li><a href="validation.html">Campaign evidence</a></li>
@@ -74,7 +73,7 @@ window, exposure denominator, and observation opportunity are established.</p>
     <li><strong>Run a short pilot at the target flux:</strong> measure \(\lambda\) and compute
     \(B^*=({\sqrt{2W_0/\lambda}-W_0})/{t_s}\). Deploy a portfolio weighted low.</li>
     <li><strong>Check the active-time fraction:</strong> confirm the device is computing, not
-    recovering. If the fraction is low, reduce flux or batch size.</li>
+    recovering. If the fraction is low, reduce flux or shorten the work cycle.</li>
     <li><strong>Log telemetry that reveals device state:</strong> a state-changed flag (not just a
     mismatch report) resolves whether each corruption was a new event or a re-observation.</li>
     <li><strong>Report with the full provenance:</strong> configuration, flux, batch size, counting
@@ -102,14 +101,13 @@ window, exposure denominator, and observation opportunity are established.</p>
 
 <section class="card"><h2>Where to go next</h2><div class="next-links">
   <a class="next-link" href="validation.html"><b>Campaign evidence →</b><span>See which of these clocks and endpoints are absent now.</span></a>
-  <a class="next-link" href="batch.html"><b>Batch calculator →</b><span>Compute B* from your own timing and trigger rate.</span></a>
 </div></section>
 </main>
 
 <footer class="site-footer"><div class="wrap">
   <p>Companion analysis for Hudson et al., "Design Strategies for Dynamic Single-Event Effect Testing of Algorithmic Computation." IU Center for Reliable and Trusted Electronics.</p>
 </div></footer>
-<script src="assets/model.js?v=20260901"></script>
-<script src="assets/pilot.js?v=20260901"></script>
+<script src="assets/model.js?v=20260911"></script>
+<script src="assets/pilot.js?v=20260911"></script>
 </body>
 </html>

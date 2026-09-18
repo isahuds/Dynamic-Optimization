@@ -4,20 +4,19 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Model &amp; caveats | Dynamic SEE Test Optimization</title>
-<meta name="description" content="Renewal-reward derivation, pileup model, rate hierarchy, and why B* is an upper bound.">
-<link rel="stylesheet" href="assets/style.css?v=20260901">
+<meta name="description" content="The flux-primary formula, the pileup ceiling, the rate hierarchy, and why excluding recovery time does not fix the rate.">
+<link rel="stylesheet" href="assets/style.css?v=20260911">
 <script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['$$','$$']]},options:{skipHtmlTags:['script','noscript','style','textarea','pre']}};</script>
 <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 </head>
 <body>
 <header class="site-header"><div class="wrap">
   <h1>Model derivation and caveats</h1>
-  <p class="tagline">The renewal-reward model, its assumptions, and the evidence that constrains them.</p>
+  <p class="tagline">The flux-primary model, its assumptions, and the evidence that constrains them.</p>
 </div></header>
 <nav class="site-nav"><ul>
   <li><a href="index.html">Pre-campaign tool</a></li>
   <li><a href="glossary.html">Glossary</a></li>
-  <li><a href="batch.html">Batch calculator</a></li>
   <li><a href="unknown.html">Prospective statistics</a></li>
   <li><a href="background.html" class="active">Model &amp; caveats</a></li>
   <li><a href="validation.html">Campaign evidence</a></li>
@@ -70,49 +69,6 @@
 </section>
 
 <section class="card">
-  <h2>The batch-size refinement (optional): renewal-reward model</h2>
-  <p>Everything below applies only to test architectures with a <strong>tunable checkpoint
-  interval</strong>, where an experimenter can choose how many results happen between checkpoints.
-  It refines throughput at a flux already chosen above. It does not change the flux decision, and a
-  test with a fixed, non-configurable work cycle can skip this section entirely.</p>
-  <p>A work cycle of \(B\) results takes \(W(B)=W_0+Bt_s\) seconds when no interruption occurs.
-  If interruptions arrive as a Poisson process at rate \(\lambda\), the expected number of complete
-  cycles between interruptions is \(1/\mathrm{expm1}[\lambda W(B)]\). With \(p_V\) the probability
-  that a complete batch is strictly valid and \(\bar R\) the mean recovery cost, the verified output
-  rate is</p>
-  $$\dot N_V(B)=\frac{Bp_V}{\mathrm{expm1}[\lambda W(B)]\cdot[1/\lambda+\bar R]}.$$
-  <p>\(\bar R\) enters only the denominator and scales the achievable rate without moving the optimum.
-  If \(p_V\) is independent of \(B\), the exact stationary condition is</p>
-  $$1-e^{-\lambda W}=\lambda(W-W_0),$$
-  <p>whose leading-order solution is the Young checkpoint interval</p>
-  $$W^{*}=\sqrt{2W_0/\lambda},\qquad B^{*}=\frac{W^{*}-W_0}{t_s}.$$
-</section>
-
-<section class="card">
-  <h2>Why immediate abort, not boundary detection</h2>
-  <p>The 2026-08-19 release additionally carried a boundary-actioned branch, in which loss is acted on
-  only at a telemetry or verification boundary and every attempt consumes the full cycle:</p>
-  $$\dot N_{V,B}(B)=\frac{Bp_Ve^{-\lambda W(B)}}{W(B)+[1-e^{-\lambda W(B)}]\bar R}.$$
-  <p>That branch does not describe this campaign. The recovery record shows automatic resynchronization
-  beginning within a fraction of a second (median 0.165 s), not at the next batch boundary. The
-  boundary branch also implies a recovery rate of \((1-e^{-\lambda W})/W\), which falls below \(\lambda\)
-  as \(W\) grows. It says long cycles stop interruptions from costing recoveries, which they do not.</p>
-  <p>The boundary branch is retired. The immediate-abort model is operationally calibrated.</p>
-</section>
-
-<section class="card">
-  <h2>The \(p_V(B)\) caveat: why B* is an upper bound</h2>
-  <p>The model assumes the probability a batch survives uninterrupted is independent of batch size.
-  The campaign's heterogeneity finding (Section IV of the paper) gives direct reason to doubt that
-  assumption. Exposure-normalized FRAM builds are not statistically homogeneous (p=0.0001), and a confirmed
-  buffer-persistence mechanism tracks the storage medium, not the batch size.</p>
-  <p>The correction is sign-determinate. If \(p_V\) declines with batch size, the risk-aware optimum
-  sits <strong>at or below \(B^*\)</strong>, never above it. This is why the recommendation is to deploy
-  a portfolio of batch sizes weighted toward the lower half of a factor-of-two window around \(B^*\).
-  The yield minimum is shallow there, so the throughput penalty for being conservative is small.</p>
-</section>
-
-<section class="card">
   <h2>Flux and pileup</h2>
   <p>The trigger rate depends on beam flux through a paralyzable pileup mechanism:</p>
   $$\lambda(\phi)=k\phi\,e^{-k\phi\tau}$$
@@ -138,8 +94,8 @@
   same way. Refitting with both runs excluded still favors this paralyzable form by a wider
   margin, not a narrower one. The fitted peak falls inside the untested gap between the campaign's
   low- and high-flux clusters.</p>
-  <p>The key insight for design: \(B^*\) tuned at one flux costs increasingly more as flux moves from
-  where it was calibrated. A short pilot at the target flux is essential.</p>
+  <p>The key insight for design: a rate measured at one flux does not transfer to another. A short
+  pilot at the flux you intend to run is essential.</p>
   <p><strong>Why this tool never recommends a flux above \(\phi^*\).</strong> The clean-cycle fraction
   \(\theta=e^{-\lambda W}\) is computed from whichever \(\lambda\) you give it, and \(\lambda\) itself
   is suppressed by pileup once flux passes \(\phi^*\): a device that is failing to keep up looks
@@ -204,27 +160,8 @@
   corresponds to a physically independent event.</p>
 </section>
 
-<section class="card">
-  <h2>Timing: calibrated vs. descriptive</h2>
-  <p>The calibrated event-free timing (\(W_0=25.1\) ms, \(t_s=7.1\) ms) differs from the descriptive
-  cycle timing used by the old companion site (16.2 ms, 4.0 ms). The difference is not an error:</p>
-  <div class="table-wrap"><table>
-    <thead><tr><th>Timing</th><th>W₀</th><th>tₛ</th><th>What it measures</th></tr></thead>
-    <tbody>
-      <tr><td>Descriptive (old)</td><td>16.2 ms</td><td>4.0 ms</td><td>Completed, activity-free iteration medians (survivor-conditioned, includes host wait)</td></tr>
-      <tr><td>Calibrated (current)</td><td>25.1 ms</td><td>7.1 ms</td><td>Event-free compute + telemetry cost per delivered result (matched to the model's W(B))</td></tr>
-    </tbody>
-  </table></div>
-  <p>The model needs event-free compute + telemetry cost, not the full observed cycle including host
-  wait. The descriptive timing was fitted with equal weight to survivor-conditioned configuration
-  medians at B=1, 50, and 200. The calibrated timing uses per-result cost decomposition from the
-  facility records, fitted to the all-FRAM 16-MHz series at B=1 and B=50 with B=200 held out for
-  validation.</p>
-</section>
-
 <section class="card"><h2>Where to go next</h2><div class="next-links">
   <a class="next-link" href="index.html"><b>Pre-campaign tool →</b><span>Use the flux-primary formula with your own numbers.</span></a>
-  <a class="next-link" href="batch.html"><b>Batch calculator (optional) →</b><span>Only if your test has a tunable checkpoint interval.</span></a>
   <a class="next-link" href="validation.html"><b>Campaign evidence →</b><span>The counting census, operational statistics, and heterogeneity finding.</span></a>
 </div></section>
 </main>
@@ -232,6 +169,6 @@
 <footer class="site-footer"><div class="wrap">
   <p>Companion analysis for Hudson et al., "Design Strategies for Dynamic Single-Event Effect Testing of Algorithmic Computation." IU Center for Reliable and Trusted Electronics.</p>
 </div></footer>
-<script src="assets/model.js?v=20260901"></script>
+<script src="assets/model.js?v=20260911"></script>
 </body>
 </html>

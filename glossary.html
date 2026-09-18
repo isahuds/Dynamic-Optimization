@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Glossary | Dynamic SEE Test Optimization</title>
 <meta name="description" content="Plain-language and precise definitions for the terms used across the site: flux, fluence, work cycle, interruption rate, pileup, batch size, and the statistics conventions.">
-<link rel="stylesheet" href="assets/style.css?v=20260901">
+<link rel="stylesheet" href="assets/style.css?v=20260911">
 <script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['$$','$$']]},options:{skipHtmlTags:['script','noscript','style','textarea','pre']}};</script>
 <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 </head>
@@ -17,7 +17,6 @@
 <nav class="site-nav"><ul>
   <li><a href="index.html">Pre-campaign tool</a></li>
   <li><a href="glossary.html" class="active">Glossary</a></li>
-  <li><a href="batch.html">Batch calculator</a></li>
   <li><a href="unknown.html">Prospective statistics</a></li>
   <li><a href="background.html">Model &amp; caveats</a></li>
   <li><a href="validation.html">Campaign evidence</a></li>
@@ -51,12 +50,12 @@ the page where the term is derived, calibrated, or used.</p>
   <p>How long one checkpoint-to-checkpoint interval takes on the bench, when nothing goes wrong. You
   measure this directly with a stopwatch on your own test article. It is not something the model
   derives for you.</p>
-  <p><strong>Technical:</strong> \(W\) is the free-running cycle duration in seconds. In the site's
-  general flux-primary formula, \(W\) is treated as a single measured, application-fixed number and is
-  <strong>not</strong> assumed to decompose into a batch size. Only the optional <a
-  href="batch.html">batch-size refinement</a> assumes the finer-grained \(W(B)=W_0+Bt_s\), and that
-  decomposition is specific to test architectures with a tunable checkpoint interval. See <a
-  href="background.html">Model &amp; caveats</a> for the full renewal-reward derivation.</p>
+  <p><strong>Technical:</strong> \(W\) is the free-running cycle duration in seconds, treated as a
+  single measured, application-fixed number. Batch size does set it, through \(W = W_0 + Bt_s\), so
+  a longer batch is a longer cycle and a lower clean-cycle fraction. That relation is a description of
+  where your \(W\) comes from, not a lever: the companion paper does not present a throughput-optimal
+  batch size, because the probability that a batch survives uninterrupted may itself decline with batch
+  size. Measure \(W\) on the bench with the beam off rather than computing it.</p>
 </section>
 
 <section class="card">
@@ -135,36 +134,33 @@ the page where the term is derived, calibrated, or used.</p>
   <h2>Batch size (optional)</h2>
 
   <h3>Batch size (\(B\))</h3>
-  <p>How many results the device produces between one checkpoint and the next, for test setups where
-  that checkpoint interval is something you can actually configure. This is a <strong>secondary,
-  optional</strong> lever. If your test architecture has a fixed, non-configurable work cycle, batch
-  size is not a knob you have, and you don't need it. Just measure \(W\) directly as described
-  under <a href="background.html">work-cycle time</a> above and use the flux-primary formula on the
+  <p>How many results the device produces between one checkpoint and the next. Batch size matters
+  because it sets your work-cycle time, and a longer cycle is a lower clean-cycle fraction. It is
+  <strong>not</strong> a tuning lever on this site. The companion paper does not present a
+  throughput-optimal batch size, because the probability that a batch survives uninterrupted may
+  itself decline with batch size, which would move any such optimum downward by an unknown amount.
+  Measure \(W\) directly and use the flux-primary formula on the
   <a href="index.html">pre-campaign tool</a>.</p>
-  <p><strong>Technical:</strong> for architectures that do support a tunable checkpoint interval, work
-  cycle decomposes as \(W(B)=W_0+Bt_s\), where \(W_0\) is fixed overhead and \(t_s\) is the marginal
-  per-result cost. The calibrated campaign values are \(W_0\approx25.1\) ms and \(t_s\approx7.1\) ms.</p>
+  <p><strong>Technical:</strong> the work cycle decomposes as \(W(B)=W_0+Bt_s\), where \(W_0\) is
+  fixed overhead and \(t_s\) is the marginal per-result cost. For this campaign's pure-FRAM 16&nbsp;MHz
+  builds, \(W_0=15.947\) ms and \(t_s=3.998\) ms. Those values do not transfer across a different
+  clock or storage technology, so measure rather than compute.</p>
 
-  <h3>\(B^{*}\)</h3>
-  <p>The batch size that squeezes the most verified throughput out of a flux you've already chosen,
-  for architectures where batch size is tunable. It is presented on this site as an <strong>upper
-  bound</strong>, not a single recommended number. Bias your actual choice toward the lower half of a
-  factor-of-two window around it.</p>
-  <p><strong>Technical:</strong> \(B^{*}=(\sqrt{2W_0/\lambda}-W_0)/t_s\), derived from the renewal-reward
-  model under the assumption that batch-validity probability \(p_V\) is independent of batch size. The
-  campaign's heterogeneity finding gives reason to doubt that assumption, and the correction is
-  sign-determinate. If \(p_V\) actually declines with batch size, the true risk-aware optimum sits at
-  or below \(B^{*}\), never above it. See the <a href="background.html">\(p_V(B)\) caveat</a> for the
-  full argument.</p>
-
-  <h3>Recovery cost / mean recovery time (\(\bar R\))</h3>
-  <p>The average time it costs, in seconds, to recover from one interruption. A slower recovery makes
-  every run take longer in absolute terms, but it does not change which batch size or flux is
-  best. It scales the whole throughput curve down without moving its peak.</p>
-  <p><strong>Technical:</strong> \(\bar R\) enters only the denominator of the verified-output-rate
-  expression \(\dot N_V(B)=\dfrac{Bp_V}{\mathrm{expm1}[\lambda W(B)]\cdot[1/\lambda+\bar R]}\). It does
-  not appear in the stationary condition that determines \(B^{*}\). See <a
-  href="validation.html">Recovery</a> for the campaign's measured recovery-time distributions.</p>
+  <h3>Recovery cost per lost cycle (\(\tau\))</h3>
+  <p>The average time a destroyed work cycle costs the test, from the interruption to the moment
+  useful work resumes. Use the <strong>mean</strong>, not the median. This campaign's median is
+  0.165&nbsp;s, which is just the programmed settle and is blind to the tail that carries the real
+  cost; the mean is 0.680&nbsp;s, and per lost cycle it runs 0.58 to 1.28&nbsp;s.</p>
+  <p>Recovery speed is the main design lever on this site, and it acts twice. It sets how much of
+  your test time yields countable exposure, through the duty factor \(D\). It also sets the flux
+  ceiling, because the pileup peak \(\phi^{*}=1/(k\tau_d)\) moves inversely with how long the
+  device stays down. Halving the outage doubles the flux at which the device can still be tested.</p>
+  <p><strong>Technical:</strong> \(\tau\) enters \(D=\theta W/[W+(1-\theta)\tau]\). Setting
+  \(\tau=0\) returns \(D=\theta\), recovering the published flux-selection relation of Zimmaro
+  et&nbsp;al. (RADECS 2022), so the duty factor extends that work rather than replacing it. Note
+  \(\tau_d\), the dead time after a <em>single</em> interrupt, is a different quantity: one lost
+  cycle may carry several interrupts. See <a href="validation.html">Recovery</a> for the campaign's
+  measured distributions.</p>
 </section>
 
 <section class="card">
@@ -217,6 +213,6 @@ the page where the term is derived, calibrated, or used.</p>
 <footer class="site-footer"><div class="wrap">
   <p>Companion analysis for Hudson et al., "Design Strategies for Dynamic Single-Event Effect Testing of Algorithmic Computation." IU Center for Reliable and Trusted Electronics.</p>
 </div></footer>
-<script src="assets/model.js?v=20260901"></script>
+<script src="assets/model.js?v=20260911"></script>
 </body>
 </html>
