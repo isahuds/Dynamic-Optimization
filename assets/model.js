@@ -15,11 +15,14 @@
  * corruption-event rate, which are counted only on cycles that survived.
  *
  * Every number here traces to the RADECS-26 repository (analysis/k_direct_fit_v1.json,
- * survival_measurement_v3.csv, duty_factor_v3.csv) and to manuscript package v80. A prior
- * package fitted a maximum counted rate from a dead time and a strike cross section, with
- * a matching minimum work-cycle time; that fit was withdrawn in v80 and replaced with a
- * direct, unfitted measurement of how often a second strike hides inside the host's
- * detection latency. If this file and the paper disagree, the paper wins.
+ * survival_measurement_v3.csv, duty_factor_v3.csv, corruption_cross_sections_clean_cycle_v1.json,
+ * call_time_budget_v1.json, reset_multiplicity_pileup_test_v2.json) and to manuscript package
+ * v81. A prior package fitted a maximum counted rate from a dead time and a strike cross
+ * section, with a matching minimum work-cycle time; that fit was withdrawn in v80 and replaced
+ * with a direct, unfitted measurement of how often a second strike hides inside the host's
+ * detection latency. v81 moved the corruption-event rate onto clean-cycle exposure, named where
+ * beam-on time goes, and redid the reset-loop census with each build's own host timeouts. If
+ * this file and the paper disagree, the paper wins.
  */
 (function (root, factory) {
   "use strict";
@@ -30,10 +33,10 @@
   "use strict";
 
   var RELEASE = Object.freeze({
-    schemaVersion: "flux-selection-design-tool-v4-2026-09-22",
+    schemaVersion: "flux-selection-design-tool-v5-2026-09-22",
     releaseDate: "2026-09-22",
-    manuscript: "TNS_REMEDIATION_2026-09-22-v80",
-    supersedes: "flux-selection-design-tool-v3-2026-09-18"
+    manuscript: "TNS_REMEDIATION_2026-09-22-v81",
+    supersedes: "flux-selection-design-tool-v4-2026-09-22"
   });
 
   var THETA_DEFAULT = 0.90;
@@ -82,6 +85,45 @@
     source: "testing-opt.tex Sec. III-B (functional-interrupt comparison)"
   });
 
+  /* Corruption-event cross section. Since v81 a corruption event is divided by the fluence
+   * delivered during the work cycles that returned a result, in-cycle exposure times theta
+   * (Table II), because it can only be read off a delivered result. v80 divided by beam-on
+   * exposure times theta and read a 6.1-fold spread; that basis is retired. The functional-
+   * interrupt rate stays on beam-on exposure, since the reset counter also records resets
+   * outside work cycles. Only the paper's printed values are carried here, not per-build
+   * rates (those appear only graphically, in its Fig. 2). */
+  var CORRUPTION = Object.freeze({
+    basis: "fluence during work cycles that returned a result (in-cycle exposure x theta)",
+    range: Object.freeze([1.1e-6, 1.0e-5]),
+    spreadFold: 9.5,
+    events: 95,
+    highest: "SRAM_Mixed_B200",
+    levelPair: Object.freeze(["SRAM_B1", "FRAM_B1_Throttled"]),
+    fiOverCorruptionFold: Object.freeze([3, 8]),   /* four of five comparable builds; level in SRAM_Mixed_B200 */
+    batchTest: Object.freeze({ chi2: 0.6, dof: 2, p: 0.73 }),
+    clockTest: Object.freeze({ chi2: 18.7, dof: 3, pBelow: 0.001 }),
+    source: "testing-opt.tex v81 Sec. III-B; analysis/corruption_cross_sections_clean_cycle_v1.json"
+  });
+
+  /* Where beam-on time went inside a call (v81 Sec. III-B), and how the duty factor compares
+   * with the directly measured countable share (Sec. IV-B). D charges recovery alone, so it
+   * is an upper bound: the host's wait to detect an interrupt and the re-running of cycles
+   * that interrupts cut short are also beam-on time. Adding the measured wait per lost cycle
+   * to tau brings D close to the measured share at B <= 50. Ranges only, as printed; the
+   * per-build split lives in analysis/call_time_budget_v1.json. */
+  var TIME_BUDGET = Object.freeze({
+    inCycle: Object.freeze([0.24, 0.43]),
+    recovery: Object.freeze([0.14, 0.36]),
+    detectionWaitMax: 0.29,
+    rerunAtB1: Object.freeze([0.01, 0.02]),
+    rerunAtB200: 0.40,                               /* "about 40%" */
+    measuredCountableShare: Object.freeze([0.12, 0.42]),
+    waitPerLostCycle_s: Object.freeze([0.7, 1.1]),
+    dWithWaitGap: Object.freeze([0.02, 0.05]),       /* at B <= 50 */
+    exampleFRAM_B1: Object.freeze({ dWithWait: 0.39, measured: 0.37 }),
+    source: "testing-opt.tex v81 Secs. III-B and IV-B; analysis/call_time_budget_v1.json"
+  });
+
   /* Hidden interrupts: a second, independent strike that lands after one reset but
    * before the host has resynchronized causes another reset that opens no new recovery
    * episode, so it is never counted (the counting loss known from radiation detectors,
@@ -89,21 +131,26 @@
    * repeated resets after a single event, so its excess over the host's count is not all
    * hidden strikes. DETECTION is the campaign's measured phase split at the comparison
    * condition, four FRAM builds: reset during computation, host reads within
-   * milliseconds; reset outside computation, host waits t_det for a pulse; a timeout,
-   * which cannot be split around detection; and resynchronizing under beam after
-   * detection. hiddenShare below is the unfitted expectation for the first two phases if
-   * every hidden reset were an independent strike landing inside t_det. */
+   * milliseconds; reset outside computation, host waits t_det for a pulse; a timeout or a
+   * failed transfer, which cannot be split around detection; and resynchronizing under beam
+   * after detection. The timeout row uses each build's own host timeouts (2 to 20 s by build
+   * and path; 53 of the 76 transfers failed before their timeout), from the v2 census.
+   * hiddenShare below is the unfitted expectation for the first two phases if every hidden
+   * reset were an independent strike landing inside t_det. */
   var DETECTION = Object.freeze({
     duringComputation: Object.freeze({ hidden: 0, of: 150 }),
     waitingOnPulse: Object.freeze({ hidden: 62, of: 338 }),
-    timeout: Object.freeze({ hidden: 19, of: 75 }),
+    timeout: Object.freeze({ hidden: 20, of: 76, wait_s: Object.freeze([2, 20]) }),
     resyncUnderBeam: Object.freeze({ approx: 0.02, detail: "3 of 150 and 8 of 338" }),
     tDetDefault_s: 0.25,
     oneInEleven: 1 / 11,
-    resetLoops: Object.freeze({ count: 14, lo: 21, hi: 62 }),
-    magnitudeRange: Object.freeze([0.06, 0.15]),
-    afterDetectionPoints: 0.02,
-    source: "testing-opt.tex Sec. IV-B (recovery time in the flux choice)"
+    counterExcess: Object.freeze([0.17, 0.44]),
+    resetLoops: Object.freeze({ count: 13, lo: 21, hi: 62, atComparison: 0 }),
+    magnitudeRange: Object.freeze([0.06, 0.17]),     /* "a tenth to an eighth" */
+    afterDetectionPoints: Object.freeze([0.02, 0.03]),
+    trueRateAboveHost: Object.freeze([0.12, 0.16]),
+    trueRateBelowCounter: Object.freeze([0.07, 0.10]),
+    source: "testing-opt.tex v81 Sec. IV-B; analysis/reset_multiplicity_pileup_test_v2.json"
   });
 
   var CAMPAIGN = Object.freeze({
@@ -112,20 +159,25 @@
     workCycleRangeFold: 41,
     thetaRange: Object.freeze([0.51, 0.98]),
     longestW_s_at_design: 0.13469,       /* theta 0.90, phi 5e4, sigma_cyc; the paper prints 135 ms */
-    testTimeNoExposure: Object.freeze([0.34, 0.72]),
-    inCycleShare: Object.freeze([0.32, 0.56]),
+    /* 1 - D over the six builds: the share of in-cycle plus recovery time that yields no
+     * countable exposure, charged for recovery alone. Not a share of beam-on time. */
+    uncountedCycleAndRecoveryShare: Object.freeze([0.34, 0.72]),
+    /* Measured directly over beam-on time inside a call (Sec. VI): 58 to 88% produced no
+     * countable exposure, i.e. a countable share of 12 to 42% (Sec. IV-B). */
+    uncountedBeamOnShare: Object.freeze([0.58, 0.88]),
     settle_s: 0.165,
     resyncFailureShare: 0.04,
     resyncFailureShareSRAM_B1: 0.16,
-    hostTimeout_s: Object.freeze([5, 10]),
+    /* The fixed cost of an episode that fails to resynchronize (Sec. IV-B). This is the
+     * resync window, not a transfer timeout: those were 2 to 20 s by build (DETECTION). */
+    resyncTimeout_s: Object.freeze([5, 10]),
     autoSuccessRate: 0.953,
     manualSuccessRate: 0.964,
     autoSuccessRateCensoredAsFailure: 0.714,
     facilityPauseMedian_s: 84.6,
     escalatedRecoveryMean_s: 93.7,
-    corruptionSpreadFold: 6.1,
-    interruptSpreadFold: 1.4,
-    cyclesPerLostCycleSpreadFold: 31
+    corruptionSpreadFold: 9.5,
+    interruptSpreadFold: 1.4
   });
 
   var FACILITIES = Object.freeze([
@@ -254,10 +306,23 @@
         cell(d.duringComputation.hidden, d.duringComputation.of) + "</td></tr>" +
       "<tr><td>Reset outside computation, host waits " + d.tDetDefault_s + " s for a pulse</td><td>" +
         cell(d.waitingOnPulse.hidden, d.waitingOnPulse.of) + "</td></tr>" +
-      "<tr><td>Timeout of 5 or 10 s, not split around detection</td><td>" +
+      "<tr><td>Timeout or failed transfer, host wait up to " + d.timeout.wait_s[0] + " to " +
+        d.timeout.wait_s[1] + " s by build, not split around detection</td><td>" +
         cell(d.timeout.hidden, d.timeout.of) + "</td></tr>" +
       "<tr><td>Resynchronizing under beam, after detection</td><td>about " +
         Math.round(d.resyncUnderBeam.approx * 100) + "% (" + d.resyncUnderBeam.detail + ")</td></tr>";
+  }
+  /* Renders TIME_BUDGET as table rows for recovery.html and background.html: where beam-on
+   * time inside a call went, as ranges over the six builds (v81 Sec. III-B). */
+  function timeBudgetRows() {
+    var t = TIME_BUDGET;
+    function range(a) { return Math.round(a[0] * 100) + " to " + Math.round(a[1] * 100) + "%"; }
+    return "<tr><td>Inside work cycles</td><td>" + range(t.inCycle) + "</td></tr>" +
+      "<tr><td>Recovery</td><td>" + range(t.recovery) + "</td></tr>" +
+      "<tr><td>The host's wait to detect an interrupt</td><td>up to " +
+        Math.round(t.detectionWaitMax * 100) + "%</td></tr>" +
+      "<tr><td>Re-running the cycles that interrupts cut short</td><td>" + range(t.rerunAtB1) +
+        " at B = 1, about " + Math.round(t.rerunAtB200 * 100) + "% at B = 200</td></tr>";
   }
 
   return Object.freeze({
@@ -268,6 +333,8 @@
     FLUX_DEFAULT: FLUX_DEFAULT,
     SIGMA_CYC: SIGMA_CYC,
     SIGMA_FI: SIGMA_FI,
+    CORRUPTION: CORRUPTION,
+    TIME_BUDGET: TIME_BUDGET,
     CONFIGS: CONFIGS,
     DETECTION: DETECTION,
     CAMPAIGN: CAMPAIGN,
@@ -282,6 +349,7 @@
     recoveryCharge: recoveryCharge,
     hiddenShare: hiddenShare,
     facilitiesAchieving: facilitiesAchieving,
-    sci: sci, dur: dur, metric: metric, warnBox: warnBox, detectionRows: detectionRows
+    sci: sci, dur: dur, metric: metric, warnBox: warnBox, detectionRows: detectionRows,
+    timeBudgetRows: timeBudgetRows
   });
 });

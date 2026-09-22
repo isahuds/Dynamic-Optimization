@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Model and evidence | Dynamic SEE Test Design</title>
 <meta name="description" content="The flux-selection relation, the heavy-ion measurement that tests it, the recovery and hidden-interrupt extensions, and every quantity defined.">
-<link rel="stylesheet" href="assets/style.css?v=20260922">
+<link rel="stylesheet" href="assets/style.css?v=20260922-v81">
 <script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['$$','$$']]},options:{skipHtmlTags:['script','noscript','style','textarea','pre']}};</script>
 <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 </head>
@@ -78,20 +78,42 @@
   \(\sigma_{\mathrm{det}}\), count over the full beam-on fluence. Both give higher counts and higher
   exposures, and the second effect wins: beam-on fluence credits exposure during windows in which
   no work cycle could be interrupted. The host's record gives a rate of 0.42 s⁻¹ at the matched flux
-  against the fitted 0.78 s⁻¹, and the curve it implies lies above every measured point. A cross
-  section over full beam-on exposure will overstate the clean-cycle fraction in proportion to how
-  much time the device spends outside its work cycle, whatever puts it there.</p>
+  against the fitted 0.78 s⁻¹, and the curve it implies lies above every measured point. Both beam-on
+  cross sections describe the device's response accurately, but either one overstates the surviving
+  share, because its exposure includes the time outside attempted work cycles spent handling
+  interrupts. In this campaign only 24 to 43% of beam-on time in a call fell within work cycles, and
+  most of the rest went to handling interrupts (<a href="#recovery">see below</a>). The same caution
+  applies to any test with dead time in beam.</p>
 </section>
 
 <section class="card" id="comparison">
   <h2>Firmware comparison and the storage signature</h2>
-  <p>At the reference LET and flux, the corruption-event cross section spread 6.1-fold across the
-  six builds, from \(4.1\times10^{-7}\) to \(2.5\times10^{-6}\) cm². The functional-interrupt cross
-  section, counted from each device's own reset counter and comparable on five of the six builds,
-  spread only 1.4-fold, from \(7.7\) to \(11.1\times10^{-6}\) cm², with a count-weighted pooled rate
-  \(\sigma_{\mathrm{FI}}=9.4\times10^{-6}\) cm². The device stops delivering results at nearly the
-  same rate whichever firmware it runs. What corrupts a result once it keeps running depends far
-  more on how that firmware stores its data.</p>
+  <p>At the reference LET and flux, the corruption-event cross section spread 9.5-fold across the
+  six builds, from \(1.1\times10^{-6}\) to \(1.0\times10^{-5}\) cm². A corruption event can only be
+  read off a delivered result, so its rate divides by the fluence delivered during the work cycles
+  that returned one: in-cycle exposure scaled by the clean-cycle fraction \(\theta\). Crediting
+  exposure from cycles that never delivered a result would shrink the cross section most for the
+  builds that lose the most. SRAM_Mixed_B200 returns the highest rate and SRAM_B1 the second, level
+  with FRAM_B1_Throttled. The three builds on that device return the three highest rates, so every
+  contrast between the two groups is also a contrast between devices.</p>
+  <p>The functional-interrupt cross section, counted from each device's own reset counter over
+  beam-on exposure and comparable on five of the six builds, spread only 1.4-fold, from \(7.7\) to
+  \(11.1\times10^{-6}\) cm², with a count-weighted pooled rate
+  \(\sigma_{\mathrm{FI}}=9.4\times10^{-6}\) cm². It sits three- to eightfold above the corruption
+  rate in four of those five builds, and level with it in SRAM_Mixed_B200. The device stops
+  delivering results at nearly the same rate whichever firmware it runs, while what corrupts a
+  result depends far more on the firmware.</p>
+  <img class="fig fig-narrow" src="assets/img/firmware_cross_sections_scatter_v18.png" alt="Functional-interrupt and corruption-event cross sections for six firmware builds at LET 7.9 and matched flux">
+  <p class="help">The companion paper's Fig. 2, at surface LET 7.9 MeV·cm²/mg and matched flux (4.6
+  to 5.1×10⁴ cm⁻² s⁻¹). Circles are the functional-interrupt cross section from the device's own
+  reset counter, over beam-on exposure. Squares are the corruption-event cross section, over
+  exposure to clean work cycles. SRAM_B1's counter could not be reconstructed, so its interrupt
+  point is drawn hollow and left out of the pooled band. Error bars are 95% exact intervals.</p>
+  <p>Storage placement is the leading contributor to the larger spread. The one build that slows
+  its clock during computation also sits above the three pure-FRAM 16 MHz builds (χ² = 18.7 on 3
+  degrees of freedom, p &lt; 0.001), but it shares a device with both SRAM builds, so this campaign
+  cannot separate the clock from the device. Batch size alone showed no detectable effect across
+  those three builds (χ² = 0.6 on 2 degrees of freedom, p = 0.73), in a test with little power.</p>
   <p>A single-bit-flip test locates the fault site behind each corruption event. Of the 34 events in
   the two SRAM builds, 16 are reproduced by a single flip in an input sample, against 1 of the 36
   events of FRAM_B1_Throttled on the same device, so the signature tracks storage rather than the
@@ -106,9 +128,9 @@
 
 <section class="card" id="recovery">
   <h2>Recovery time in the flux choice</h2>
-  <p>Charged for the time it spends recovering, the campaign spent 34% to 72% of its test time
-  buying no countable exposure, depending on the build. Let \(\tau\) be the mean recovery time per
-  lost cycle. The duty factor is the surviving cycle time over the sum of cycle time and the
+  <p>Charged for recovery time alone, the builds lost 34% to 72% of their in-cycle and recovery time
+  to exposure they could not count, depending on the build. Let \(\tau\) be the mean recovery time
+  per lost cycle. The duty factor is the surviving cycle time over the sum of cycle time and the
   recovery expected per cycle:</p>
   <div class="formula-box">$$D=\frac{\theta W}{W+(1-\theta)\tau}\qquad\qquad \theta=\frac{D\,(W+\tau)}{W+D\,\tau}$$</div>
   <p>Setting \(\tau=0\) returns \(D=\theta\), so this extends the published relation rather than
@@ -132,6 +154,21 @@
   A campaign that pauses the beam to recover does not escape the charge, since \(\tau\) then moves
   from its beam-on budget to its facility budget: an escalated recovery cost a mean of 93.7 s
   against a median pause of 84.6 s.</p>
+  <h3>Where the rest of the beam-on time went</h3>
+  <p>Recovery is not the only time a call spends outside its work cycles. Share of beam-on time in a
+  call, across the six builds:</p>
+  <div class="table-wrap"><table class="validation">
+    <thead><tr><th>Activity</th><th>Share of beam-on time in a call</th></tr></thead>
+    <tbody id="timeBudgetTable"></tbody>
+  </table></div>
+  <p>A re-run does not begin from a verified state, so it is not counted as a new work cycle.
+  \(D\) charges recovery alone, so it is an upper bound on the countable share. Measured directly,
+  as the time in cycles that returned a clean result over beam-on time in a call, that share is 12
+  to 42%, below \(D\) for every build, because \(D\) charges neither the host's wait to detect an
+  interrupt nor the re-running of cut-short cycles. Adding the measured wait, 0.7 to 1.1 s per lost
+  cycle, to \(\tau\) brings \(D\) within 0.02 to 0.05 of the measured share at \(B\le50\), for
+  example 0.39 against 0.37 for FRAM_B1. Measured this way, 58 to 88% of beam-on time in a call
+  produced no countable exposure.</p>
 </section>
 
 <section class="card" id="pileup">
@@ -147,26 +184,29 @@
   independent strikes, not a fit to these data.</p>
   <div class="formula-box">$$\text{hidden share}=1-e^{-\sigma_{\mathrm{FI}}\,\phi\,t_{\mathrm{det}}}$$</div>
   <p>The device's own reset counter records these hidden resets, but it also credits repeated
-  resets after a single event, so its 15 to 30% excess over the host's count is not all hidden
+  resets after a single event, so its 17 to 44% excess over the host's count is not all hidden
   strikes. The two can be told apart by rate, since the firmware cannot reset itself and only
   independent strikes become more frequent as flux rises. In 1,856 interrupts where the host waited
   a fixed 0.25 s before reading, the share carrying a second reset rose with the interrupt rate,
   consistent with independent strikes landing in the wait. About one interrupt in eleven reset again
-  whatever the rate, which looks like a property of the event rather than of the beam, and fourteen
-  reset loops of 21 to 62 resets each were recorded, one of them at the comparison condition.</p>
+  whatever the rate, which looks like a property of the event rather than of the beam. Thirteen
+  reset loops of 21 to 62 resets each were also recorded, none of them at the comparison condition,
+  and \(\sigma_{\mathrm{FI}}\) counts every reset in them.</p>
   <p>Most hidden strikes, though, fell before the host had even detected the first reset. Split by
   when the host was watching, at the comparison condition:</p>
   <div class="table-wrap"><table class="validation">
     <thead><tr><th>Phase</th><th>Share hiding a second reset</th></tr></thead>
     <tbody id="detectionTable"></tbody>
   </table></div>
-  <p>About a tenth of the four FRAM builds' interrupts were hidden this way at the test flux (6 to
-  15%), with about 2 points of it arising after detection and the rest before.
-  Their true interrupt rate likely sits about a tenth above the host-detected rate and a tenth below
-  the reset-counter rate. Pausing the beam or closing a shutter on detection (Wilcox et al. 2017;
-  TI's MSP430FR5969-SP report) would remove only those 2 points. The latency before detection
-  remains, and here it was set by the host's own wait and timeouts, so detection latency is the
-  lever, not recovery under beam.</p>
+  <p>A tenth to an eighth of the four FRAM builds' interrupts were hidden this way at the test flux
+  (6 to 17%). The loss after detection was 2 to 3 points, and the rest fell before it. The true
+  interrupt rate of these builds therefore likely lies 12 to 16% above the host-detected rate and 7
+  to 10% below the reset-counter rate. The range reflects one 21-reset failure at that condition,
+  which the loop test can read either as a loop or as independent strikes. Pausing the beam or
+  closing a shutter on detection (Wilcox et al. 2017; TI's MSP430FR5969-SP report) would remove only
+  the 2 to 3 points. The latency before detection remains, and here it was set by the host's own
+  wait and timeouts, which also took up to 29% of beam-on time, so detection latency is the lever,
+  not recovery under beam.</p>
   <div class="metrics" id="hiddenMetrics"></div>
   <p class="note">Hidden strikes bias a counted interrupt rate low, and with it a projected mission
   interrupt rate. They do not bias the clean-cycle fraction or the corruption-event rate, since both
@@ -177,12 +217,12 @@
 
 <section class="card" id="quantities">
   <h2>Quantities</h2>
-  <p class="note">As defined in the companion paper's Table III, with the time base each rate is
-  measured on.</p>
+  <p class="note">As defined in the companion paper's Tables II and III, with the time base each
+  rate is measured on.</p>
   <div class="table-wrap"><table class="symbols">
     <thead><tr><th>Quantity</th><th>Meaning</th><th>Where measured</th></tr></thead>
     <tbody>
-      <tr><td>Beam-on time</td><td>Time the beam was on the device.</td><td>paper §III-A</td></tr>
+      <tr><td>Beam-on time</td><td>Time the beam was on the device.</td><td>paper §II-D</td></tr>
       <tr><td>In-cycle time</td><td>The part of beam-on time spent inside work cycles.</td><td>§III-B</td></tr>
       <tr><td>Recovery time</td><td>The part of beam-on time spent restoring the device after an interruption. Recoveries that paused the beam are counted separately.</td><td>§III-A</td></tr>
       <tr><td>Detection latency</td><td>Time from a reset to the host detecting it, in which a further reset opens no new recovery episode.</td><td>§IV-B</td></tr>
@@ -193,24 +233,27 @@
       <tr><td>\(\sigma_{\mathrm{cyc}}\)</td><td>Cross section for losing a work cycle, cm², fitted to the direct count of surviving cycles; \(\sigma_{\mathrm{cyc}}\phi\) is the lost-cycle rate per second of in-cycle time.</td><td>§IV-A</td></tr>
       <tr><td>\(\sigma_{\mathrm{FI}}\)</td><td>Cross section for functional interrupts, cm², counted from the device's reset counter over beam-on exposure.</td><td>§III-B</td></tr>
       <tr><td>\(\sigma_{\mathrm{det}}\)</td><td>Cross section for host-detected interrupts, cm², counted from the recovery record over beam-on exposure; matches \(\sigma_{\mathrm{cyc}}\) in neither count nor exposure basis.</td><td>§IV-A</td></tr>
+      <tr><td>Corruption event</td><td>One or more contiguous counted errors in a single call, kept only if no recovery began in the cycle that delivered it. Its cross section is over the in-cycle time of attempted cycles scaled by \(\theta\), the exposure of the cycles that returned a result.</td><td>§II-D, §III-B</td></tr>
       <tr><td>\(\tau\)</td><td>Mean recovery time per lost cycle.</td><td>§IV-B</td></tr>
       <tr><td>\(D\)</td><td>Duty factor, the share of in-cycle plus recovery time that yields countable exposure.</td><td>§IV-B</td></tr>
       <tr><td>\(\Phi\), \(T\)</td><td>Target fluence and the wall-clock time to reach it, \(T=\Phi/\phi\). Site-only conveniences.</td><td>this site</td></tr>
     </tbody>
   </table></div>
-  <p class="help">Counted errors are functional interrupts and corruption events. The paper avoids
-  SEFI and SEU for them because single-particle attribution cannot be established for these
-  events. The site follows.</p>
+  <p class="help">The paper reports two primary quantities, the functional interrupt and the
+  corruption event. A counted error is the step between: a corrupted result that passed both
+  screening steps, which feeds corruption events only. The paper avoids SEFI and SEU for these
+  quantities because single-particle attribution cannot be established for them. The site
+  follows.</p>
 </section>
 
 <section class="card" id="facilities">
   <h2>Facility flux ranges used by the tools</h2>
   <p class="note">Sourced for the achievable-range line on the first page. TAMU is excluded because
   its published materials give no numeric flux ceiling.</p>
-  <table>
+  <div class="table-wrap"><table>
     <thead><tr><th>Facility</th><th>Heavy-ion flux (cm⁻² s⁻¹)</th><th>Source</th></tr></thead>
     <tbody id="facilityTable"></tbody>
-  </table>
+  </table></div>
 </section>
 
 <section class="card" id="references">
@@ -232,7 +275,7 @@
   <p>Companion to Hudson, Hunnicutt and Loveless, "Design Strategies for Dynamic Single-Event Effect Testing of Algorithmic Computation," IEEE Trans. Nucl. Sci. (RADECS 2026). IU Center for Reliable and Trusted Electronics.</p>
 </div></footer>
 
-<script src="assets/model.js?v=20260922"></script>
+<script src="assets/model.js?v=20260922-v81"></script>
 <script>
 (function () {
   "use strict";
@@ -248,12 +291,14 @@
     S.metric("Host-record rate σ_det φ", sig.hostDetectedRate.toFixed(2), " s⁻¹", "lies above every measured point") +
     S.metric("Longest W at θ = 0.90, 5×10⁴", S.dur(S.longestW(0.9, sig.value, 5e4)), "", "three of six builds sit under it; FRAM_B50 exceeds it 1.6-fold and the two at B=200 about 6-fold");
   document.getElementById("detectionTable").innerHTML = S.detectionRows();
+  document.getElementById("timeBudgetTable").innerHTML = S.timeBudgetRows();
   var FI = S.SIGMA_FI, DET = S.DETECTION;
+  function pctRange(a, unit) { return Math.round(a[0] * 100) + " to " + Math.round(a[1] * 100) + unit; }
   document.getElementById("hiddenMetrics").innerHTML =
     S.metric("σ_FI, pooled", S.sci(FI.pooled, 2), " cm²", FI.comparableBuilds + " directly comparable builds, " + FI.spreadFold + "-fold spread", true) +
     S.metric("Hidden share, 5×10⁴ at t_det = " + DET.tDetDefault_s + " s", (S.hiddenShare(FI.pooled, 5e4, DET.tDetDefault_s) * 100).toFixed(1) + "%", "", "the estimator on the recovery page") +
-    S.metric("Measured at the test flux", "6 to 15%", "", "about a tenth, four FRAM builds") +
-    S.metric("Of which after detection", "about 2%", "", "the part a shutter or pause can remove");
+    S.metric("Measured at the test flux", pctRange(DET.magnitudeRange, "%"), "", "a tenth to an eighth, four FRAM builds") +
+    S.metric("Of which after detection", pctRange(DET.afterDetectionPoints, " points"), "", "the part a shutter or pause can remove");
   document.getElementById("facilityTable").innerHTML = S.FACILITIES.map(function (f) {
     var r = (f.fluxMin == null ? "up to " : S.sci(f.fluxMin) + " to ") + S.sci(f.fluxMax);
     return "<tr><td>" + f.label + "</td><td>" + r + "</td><td class='note'>" + f.source + "</td></tr>";

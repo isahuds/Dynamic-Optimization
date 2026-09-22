@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>With recovery time | Dynamic SEE Test Design</title>
 <meta name="description" content="Charge a dynamic SEE test for the time it spends recovering, and see how many interrupts a detection delay can hide from the count.">
-<link rel="stylesheet" href="assets/style.css?v=20260922">
+<link rel="stylesheet" href="assets/style.css?v=20260922-v81">
 <script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['$$','$$']]},options:{skipHtmlTags:['script','noscript','style','textarea','pre']}};</script>
 <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 </head>
@@ -52,7 +52,10 @@
       <div class="inputrow"><input id="inputTau" type="text" inputmode="decimal" value="0.6"><span class="unit">s</span></div>
       <p class="help">The <strong>mean</strong> from interruption to the resumption of work, including
       retries and any host timeout, not the median settle. The campaign measured 0.58 to 1.28 s
-      per lost cycle against a 0.165 s settle.</p>
+      per lost cycle against a 0.165 s settle. That is recovery alone. To predict the share of
+      beam-on time that counts, add the host's wait to detect each loss: in the campaign, adding
+      the measured 0.7 to 1.1 s per lost cycle brought \(D\) within 0.02 to 0.05 of the directly
+      measured share at \(B\le50\).</p>
     </div>
     <div class="field">
       <label for="inputTDet">Detection latency \(t_{\mathrm{det}}\)</label>
@@ -86,7 +89,10 @@
     \theta=\frac{D\,(W+\tau)}{W+D\,\tau}$$
   </div>
   <p class="note">\(D\) is the share of in-cycle plus recovery time that yields countable exposure,
-  meaning fluence delivered during cycles that survive to report. The charge a test pays is
+  meaning fluence delivered during cycles that survive to report. It charges recovery alone, so it
+  is an upper bound on the share of beam-on time that counts: the host's wait to detect an
+  interrupt and the re-running of cycles that interrupts cut short are beam-on time too, and the
+  second is not charged at all. The charge a test pays is
   \((1-\theta)\tau/W\). Once \(\theta\) comes from the rule on the first page, \(W\) cancels out of
   that charge and it is left to \(\tau\): a build already keeping most of its cycles gains more from
   recovering reliably than from shortening the cycle it runs.</p>
@@ -107,13 +113,15 @@
     <thead><tr><th>Phase</th><th>Share hiding a second reset</th></tr></thead>
     <tbody id="detectionTable"></tbody>
   </table></div>
-  <p class="note">About a tenth of these builds' interrupts were hidden this way at the test flux
-  (6 to 15%), with about 2 points of it arising after detection and the rest
-  before. A pause or a shutter closed on detection removes only those 2 points. The latency before
-  detection remains, so detection latency is the lever, not recovery under beam. The 18% figure
-  above also includes repeated resets after a single event, not only independent strikes.</p>
-  <img class="fig" src="assets/img/hidden_reset_phases_v1.png" alt="Share of interrupts hiding a second reset, by detection phase, for the four FRAM builds at the comparison condition">
-  <p class="help">Reset loops are excluded. Error bars in the source figure are 95% exact intervals.</p>
+  <p class="note">A tenth to an eighth of these builds' interrupts were hidden this way at the test
+  flux (6 to 17%). The loss after detection was 2 to 3 points, and the rest fell before it. A pause
+  or a shutter closed on detection removes only those 2 to 3 points. The latency before detection
+  remains, so detection latency is the lever, not recovery under beam. The 18% figure above also
+  includes repeated resets after a single event, not only independent strikes.</p>
+  <img class="fig" src="assets/img/hidden_reset_phases_v2.png" alt="Share of interrupts hiding a second reset, by detection phase, for the four FRAM builds at the comparison condition">
+  <p class="help">The timeout bar uses each build's own host timeouts, 2 to 20 s by build and path,
+  so the wait is an upper bound. None of the campaign's 13 reset loops fell at this condition.
+  Error bars in the source figure are 95% exact intervals.</p>
   <h3>Chance an interrupt hides an independent strike</h3>
   <div class="formula-box">
     $$\text{hidden share}=1-e^{-\sigma_{\mathrm{FI}}\,\phi\,t_{\mathrm{det}}}$$
@@ -130,8 +138,9 @@
 <section class="card">
   <h2>What the campaign measured</h2>
   <p class="note">Six builds at one flux and LET. The two that keep the most cycles are not the two
-  that keep the most test time, because their recovery is slower. Between 34% and 72% of test time
-  bought no countable exposure, depending on the build.</p>
+  that keep the most test time, because their recovery is slower. Charged for recovery alone,
+  between 34% and 72% of in-cycle and recovery time bought no countable exposure, depending on the
+  build.</p>
   <div class="table-wrap"><table class="validation">
     <thead><tr><th>Build</th><th>\(W\)</th><th>\(\theta\) measured</th><th>\(\tau\) (s)</th><th>\(D\)</th><th>Rank by \(\theta\)</th><th>Rank by \(D\)</th></tr></thead>
     <tbody id="campaignTable"></tbody>
@@ -142,6 +151,16 @@
   16%. The slowest twentieth of episodes carries between a quarter and seven tenths of each build's
   recovery time, so failing less often, or waiting less when it fails, is a larger lever than the
   settle.</p>
+  <h3>Where beam-on time went</h3>
+  <div class="table-wrap"><table class="validation">
+    <thead><tr><th>Activity</th><th>Share of beam-on time in a call</th></tr></thead>
+    <tbody id="timeBudgetTable"></tbody>
+  </table></div>
+  <p class="help">A re-run does not begin from a verified state, so it is not counted as a new work
+  cycle. Measured directly over beam-on time, the countable share was 12 to 42%, below every
+  build's \(D\). Adding the measured detection wait to \(\tau\) brings \(D\) within 0.02 to 0.05 of
+  that share at \(B\le50\), for example 0.39 against 0.37 for FRAM_B1. At \(B=200\), re-running
+  cut-short cycles took about 40% of beam-on time, and \(D\) charges none of it.</p>
 </section>
 
 <section class="card">
@@ -158,7 +177,7 @@
   <p>Companion to Hudson, Hunnicutt and Loveless, "Design Strategies for Dynamic Single-Event Effect Testing of Algorithmic Computation," IEEE Trans. Nucl. Sci. (RADECS 2026). IU Center for Reliable and Trusted Electronics.</p>
 </div></footer>
 
-<script src="assets/model.js?v=20260922"></script>
-<script src="assets/recovery.js?v=20260922"></script>
+<script src="assets/model.js?v=20260922-v81"></script>
+<script src="assets/recovery.js?v=20260922-v81"></script>
 </body>
 </html>

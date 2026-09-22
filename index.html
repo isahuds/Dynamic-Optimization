@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Flux and work cycle | Dynamic SEE Test Design</title>
 <meta name="description" content="Choose a heavy-ion test flux, or the longest work cycle a flux allows, from one cross section and a target share of surviving work cycles.">
-<link rel="stylesheet" href="assets/style.css?v=20260922">
+<link rel="stylesheet" href="assets/style.css?v=20260922-v81">
 <script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['$$','$$']]},options:{skipHtmlTags:['script','noscript','style','textarea','pre']}};</script>
 <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 </head>
@@ -101,10 +101,11 @@
   <h2>Which cross section to use</h2>
   <p>Only a cross section counted from <em>lost cycles over in-cycle fluence</em> belongs in the
   rule. A functional-interrupt cross section from a reset counter, or one from the host's recovery
-  record, counts over the full beam-on fluence, which credits exposure during windows in which no
-  cycle could be interrupted. Either will predict more surviving cycles than a test delivers, by an
-  amount that grows with how much time the device spends outside its work cycle. In the companion
-  campaign the host's record gave a rate about half the fitted one. See
+  record, counts over the full beam-on fluence, which includes the time outside work cycles spent
+  handling interrupts: recovering from them, waiting to detect them, and re-running the cycles they
+  cut short. Either will predict more surviving cycles than a test delivers, by an amount that grows
+  with how much time the device spends outside its work cycle. In the companion campaign the host's
+  record gave a rate about half the fitted one. See
   <a href="background.html#validation">the evidence</a>.</p>
 </section>
 
@@ -122,7 +123,7 @@
   <p>Companion to Hudson, Hunnicutt and Loveless, "Design Strategies for Dynamic Single-Event Effect Testing of Algorithmic Computation," IEEE Trans. Nucl. Sci. (RADECS 2026). IU Center for Reliable and Trusted Electronics.</p>
 </div></footer>
 
-<script src="assets/model.js?v=20260922"></script>
-<script src="assets/main.js?v=20260922"></script>
+<script src="assets/model.js?v=20260922-v81"></script>
+<script src="assets/main.js?v=20260922-v81"></script>
 </body>
 </html>

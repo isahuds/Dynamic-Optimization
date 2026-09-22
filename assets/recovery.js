@@ -32,10 +32,10 @@
     var flux = S.fluxForW(theta, sigma, W);
     var dutyHtml =
       S.metric("Duty factor at your θ", D.toFixed(3), "", "share of in-cycle plus recovery time that counts", true) +
-      S.metric("Test time buying no exposure", pct(1 - D), "", "1 − D") +
+      S.metric("Cycle and recovery time buying no exposure", pct(1 - D), "", "1 − D; beam-on time also holds the detection wait and re-runs") +
       S.metric("Recovery charge (1−θ)τ/W", charge.toFixed(3), "", charge > 0.5 ? "about as long recovering as computing" : "recovery per cycle attempted, in cycle lengths") +
       S.metric("Flux for your W at θ", S.sci(flux), " cm⁻² s⁻¹", "from the first page's rule") +
-      S.metric("Time to Φ, beam on", S.dur(S.wallClockTime(flux, fluence)), "", "of which countable exposure is " + pct(D));
+      S.metric("Time to Φ, beam on", S.dur(S.wallClockTime(flux, fluence)), "", "at most " + pct(D) + " of it countable, since D charges recovery alone");
     var dutyVerdict = "";
     if (Dtarget !== null) {
       var thetaNeeded = S.thetaForDuty(Dtarget, W, tau);
@@ -47,7 +47,7 @@
         dutyHtml += S.metric("θ needed for D = " + Dtarget, pct(thetaNeeded), "", "then the rule gives", true) +
           S.metric("Flux for that θ", S.sci(fluxNeeded), " cm⁻² s⁻¹", "at W = " + S.dur(W));
         dutyVerdict = S.warnBox("Target duty factor set.",
-          " To keep " + pct(Dtarget) + " of booked time countable at τ = " + tau + " s you need " + pct(thetaNeeded) +
+          " To keep " + pct(Dtarget) + " of in-cycle plus recovery time countable at τ = " + tau + " s you need " + pct(thetaNeeded) +
           " of cycles to survive, which at your σ and W means running no more than " + S.sci(fluxNeeded) + " cm⁻² s⁻¹.");
       }
     }
@@ -66,6 +66,7 @@
       document.getElementById(id).addEventListener("input", render);
     });
     document.getElementById("detectionTable").innerHTML = S.detectionRows();
+    document.getElementById("timeBudgetTable").innerHTML = S.timeBudgetRows();
     campaignTable();
     render();
   });
