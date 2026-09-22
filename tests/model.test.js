@@ -6,8 +6,8 @@ const S = require("../assets/model.js");
 const close = (a, b, rel) => Math.abs(a - b) <= rel * Math.abs(b);
 
 test("release identifies the manuscript package it was built against", () => {
-  assert.equal(S.RELEASE.schemaVersion, "flux-selection-design-tool-v3-2026-09-18");
-  assert.equal(S.RELEASE.manuscript, "TNS_REMEDIATION_2026-09-17-v76");
+  assert.equal(S.RELEASE.schemaVersion, "flux-selection-design-tool-v4-2026-09-22");
+  assert.equal(S.RELEASE.manuscript, "TNS_REMEDIATION_2026-09-22-v80");
 });
 
 test("sigma_cyc pins the released direct fit", () => {
@@ -57,9 +57,9 @@ test("clean fraction, frontier product, flux-for-W and longest-W are one relatio
   assert.ok(close(S.frontierProduct(theta, sigma), phi * W, 1e-12));
 });
 
-test("design rule: longest work cycle is 285 ms at theta 0.80 and 5e4", () => {
-  const W = S.longestW(0.80, S.SIGMA_CYC.value, 5e4);
-  assert.ok(close(W, 0.28527, 1e-3));
+test("design rule: longest work cycle is 135 ms at theta 0.90 and 5e4", () => {
+  const W = S.longestW(0.90, S.SIGMA_CYC.value, 5e4);
+  assert.ok(close(W, 0.13469, 1e-3));
   assert.ok(close(W, S.CAMPAIGN.longestW_s_at_design, 1e-3));
 });
 
@@ -81,37 +81,41 @@ test("recovery charge for FRAM_B1 is close to one: as long recovering as computi
   assert.ok(charge > 0.9 && charge < 1.0, String(charge));
 });
 
-test("shortest work cycle is 74 to 92 ms at theta 0.80 for tau_d 0.33 to 0.41 s", () => {
-  assert.ok(close(S.shortestW(0.80, S.PILEUP.tauD), 0.0741, 2e-3));
-  assert.ok(close(S.shortestW(0.80, S.PILEUP.tauDComparisonLET), 0.0924, 2e-3));
+test("pooled sigma_FI matches the paper's five-build functional-interrupt rate", () => {
+  assert.ok(close(S.SIGMA_FI.pooled, 9.4e-6, 1e-3));
+  assert.equal(S.SIGMA_FI.spreadFold, 1.4);
+  assert.equal(S.SIGMA_FI.comparableBuilds, 5);
 });
 
-test("comparison-LET ceiling from sigma_cyc is 1.5 to 1.9e5", () => {
-  const hi = S.ceilingFlux(S.SIGMA_CYC.value, S.PILEUP.tauD);
-  const lo = S.ceilingFlux(S.SIGMA_CYC.value, S.PILEUP.tauDComparisonLET);
-  assert.ok(close(hi, 1.93e5, 1e-2));
-  assert.ok(close(lo, 1.54e5, 1e-2));
-  // three to six times the flux the builds used
-  assert.ok(lo / 5e4 > 3 && hi / 5e4 < 6);
-  // sigma_cyc phi tau_d at 5e4 is 0.26 to 0.32, so suppression there is under a third
-  assert.ok(S.suppression(S.SIGMA_CYC.value, 5e4, S.PILEUP.tauDComparisonLET) < 1 / 3);
+test("recovery charge measured directly spans 34% to 72% of test time", () => {
+  assert.equal(S.CAMPAIGN.testTimeNoExposure[0], 0.34);
+  assert.equal(S.CAMPAIGN.testTimeNoExposure[1], 0.72);
 });
 
-test("pileup fit: phi* is 1/(sigma_fit tau_d), about 26,000, and the reset-counter refit moves it under 5%", () => {
-  assert.ok(close(S.PILEUP.phiStar, 1 / (S.PILEUP.sigmaFit * S.PILEUP.tauD), 1e-9));
-  assert.ok(close(S.PILEUP.phiStar, 26000, 5e-3));
-  const shift = Math.abs(S.PILEUP.resetCounter.phiStar - S.PILEUP.phiStar) / S.PILEUP.phiStar;
-  assert.ok(shift < 0.05);
-  // an illustrative 1 s dead time puts the peak near 8,600
-  assert.ok(close(1 / (S.PILEUP.sigmaFit * 1.0), 8600, 1e-2));
+test("hiddenShare is the independent-strike expectation over a detection window", () => {
+  // pinned to the task's worked example: sigma_FI 9.4e-6, phi 5e4, t_det 0.25 s -> ~0.111
+  assert.ok(close(S.hiddenShare(9.4e-6, 5e4, 0.25), 0.111, 1e-2));
+  // a much shorter detection latency hides almost nothing: t_det 0.001 s -> ~0.00047
+  assert.ok(close(S.hiddenShare(9.4e-6, 5e4, 0.001), 0.00047, 1e-2));
+  assert.equal(S.hiddenShare(9.4e-6, 5e4, 0), 0);
+  // matches the pooled sigma_FI and the design flux used elsewhere on the site
+  assert.ok(close(S.hiddenShare(S.SIGMA_FI.pooled, S.FLUX_DEFAULT, S.DETECTION.tDetDefault_s), 0.111, 1e-2));
 });
 
-test("counted rate at phi* sits 63% below the unsuppressed line", () => {
-  const s = S.suppression(S.PILEUP.sigmaFit, S.PILEUP.phiStar, S.PILEUP.tauD);
-  assert.equal(s.toFixed(2), "0.63");
-  const peak = S.countedRate(S.PILEUP.sigmaFit, S.PILEUP.phiStar, S.PILEUP.tauD);
-  assert.ok(S.countedRate(S.PILEUP.sigmaFit, S.PILEUP.phiStar * 0.5, S.PILEUP.tauD) < peak);
-  assert.ok(S.countedRate(S.PILEUP.sigmaFit, S.PILEUP.phiStar * 2, S.PILEUP.tauD) < peak);
+test("DETECTION reproduces the paper's phase split at the comparison condition", () => {
+  assert.equal(S.DETECTION.duringComputation.hidden, 0);
+  assert.equal(S.DETECTION.duringComputation.of, 150);
+  assert.equal(Math.round((S.DETECTION.waitingOnPulse.hidden / S.DETECTION.waitingOnPulse.of) * 100), 18);
+  assert.equal(Math.round((S.DETECTION.timeout.hidden / S.DETECTION.timeout.of) * 100), 25);
+  assert.equal(S.DETECTION.tDetDefault_s, 0.25);
+});
+
+test("detectionRows renders one row per phase with the exact counted figures", () => {
+  const rows = S.detectionRows();
+  assert.ok(rows.includes("0 of 150"));
+  assert.ok(rows.includes("18% (62 of 338)"));
+  assert.ok(rows.includes("25% (19 of 75)"));
+  assert.ok(rows.includes("about 2% (3 of 150 and 8 of 338)"));
 });
 
 test("host-detected rate lies below the fitted rate at the same flux", () => {
@@ -123,7 +127,8 @@ test("input validation", () => {
   assert.throws(() => S.frontierProduct(0.8, 0), RangeError);
   assert.throws(() => S.fluxForW(0.8, 1e-5, 0), RangeError);
   assert.throws(() => S.dutyFactor(0.8, 0.02, -1), RangeError);
-  assert.throws(() => S.shortestW(0.8, 0), RangeError);
+  assert.throws(() => S.hiddenShare(0, 5e4, 0.25), RangeError);
+  assert.throws(() => S.hiddenShare(9.4e-6, 5e4, -1), RangeError);
 });
 
 test("facilities filter is inclusive on both bounds", () => {

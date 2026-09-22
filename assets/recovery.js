@@ -17,12 +17,12 @@
   }
 
   function render() {
-    var sigma = num("inputSigma"), W = num("inputW") / 1000, tau = num("inputTau"), tauD = num("inputTauD"),
+    var sigma = num("inputSigma"), W = num("inputW") / 1000, tau = num("inputTau"), tDet = num("inputTDet"),
         fluence = num("inputFluence"), theta = num("inputTheta") / 100;
     var Draw = document.getElementById("inputD").value.trim();
     var Dtarget = Draw === "" ? null : parseFloat(Draw);
     document.getElementById("thetaValue").textContent = Math.round(theta * 100);
-    var ok = { inputSigma: sigma > 0, inputW: W > 0, inputTau: tau >= 0, inputTauD: tauD > 0,
+    var ok = { inputSigma: sigma > 0, inputW: W > 0, inputTau: tau >= 0, inputTDet: tDet >= 0,
                inputFluence: fluence > 0, inputD: Dtarget === null || (Dtarget > 0 && Dtarget <= 1) };
     Object.keys(ok).forEach(function (k) { mark(k, ok[k]); });
     if (!Object.keys(ok).every(function (k) { return ok[k]; })) return;
@@ -54,32 +54,18 @@
     document.getElementById("dutyVerdict").innerHTML = dutyVerdict;
     document.getElementById("dutyOutputs").innerHTML = dutyHtml;
 
-    var ceiling = S.ceilingFlux(sigma, tauD);
-    var Wmin = S.shortestW(theta, tauD);
-    var supp = S.suppression(sigma, flux, tauD);
-    var cv;
-    if (flux > ceiling) {
-      cv = S.warnBox("The flux your work cycle calls for is above the ceiling.",
-        " The rule asks for " + S.sci(flux) + " cm⁻² s⁻¹ but the counted rate peaks no higher than " + S.sci(ceiling) +
-        ". Equivalently, W = " + S.dur(W) + " is shorter than the " + S.dur(Wmin) + " minimum for θ = " + Math.round(theta * 100) +
-        "%. Lengthen the cycle to at least " + S.dur(Wmin) + " or accept a lower θ; a rate counted past the peak understates the true one.", true);
-    } else {
-      cv = S.warnBox("The flux for your work cycle sits under the ceiling.",
-        " " + S.sci(flux) + " against a peak no higher than " + S.sci(ceiling) + " cm⁻² s⁻¹, " + (ceiling / flux).toFixed(1) +
-        " times higher. A rate counted at that flux is suppressed by no more than " + pct(supp) + ".");
-    }
-    document.getElementById("ceilingVerdict").innerHTML = cv;
-    document.getElementById("ceilingOutputs").innerHTML =
-      S.metric("Flux ceiling 1/(σ τ_d)", S.sci(ceiling), " cm⁻² s⁻¹", "counted rate peaks no higher than this", true) +
-      S.metric("Shortest work cycle at θ", S.dur(Wmin), "", "−ln θ · τ_d; the cross section cancels", true) +
-      S.metric("Counted-rate suppression at your flux", pct(supp), "", "1 − exp(−σ φ τ_d), an upper bound") +
-      S.metric("Suppression at the ceiling", pct(S.suppression(sigma, ceiling, tauD)), "", "63% at the peak of any paralyzable count");
+    var hidden = S.hiddenShare(S.SIGMA_FI.pooled, flux, tDet);
+    document.getElementById("hiddenOutputs").innerHTML =
+      S.metric("Hidden share at your flux", pct(hidden), "", "1 − exp(−σ_FI φ t_det), an expectation, not a fit", true) +
+      S.metric("σ_FI used", S.sci(S.SIGMA_FI.pooled, 2), " cm²", "pooled across five directly comparable builds") +
+      S.metric("Flux used", S.sci(flux), " cm⁻² s⁻¹", "from the rule above at your θ and W");
   }
 
   document.addEventListener("DOMContentLoaded", function () {
-    ["inputSigma", "inputW", "inputTau", "inputTauD", "inputD", "inputFluence", "inputTheta"].forEach(function (id) {
+    ["inputSigma", "inputW", "inputTau", "inputTDet", "inputD", "inputFluence", "inputTheta"].forEach(function (id) {
       document.getElementById(id).addEventListener("input", render);
     });
+    document.getElementById("detectionTable").innerHTML = S.detectionRows();
     campaignTable();
     render();
   });

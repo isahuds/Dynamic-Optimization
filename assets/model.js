@@ -8,11 +8,18 @@
  *
  * The survival form follows Young (1974) and Daly (2006); the flux-selection framing
  * follows Zimmaro et al. (RADECS 2022). The recovery charge (duty factor D) and the
- * pileup bound are the companion paper's extensions.
+ * hidden-interrupt estimate are the companion paper's extensions. A second strike that
+ * lands before the host detects the first reset causes another reset that is never
+ * counted, so a counted interrupt rate can sit below the true one by a share that grows
+ * with flux and with detection latency. That share never touches sigma_cyc, theta or the
+ * corruption-event rate, which are counted only on cycles that survived.
  *
  * Every number here traces to the RADECS-26 repository (analysis/k_direct_fit_v1.json,
- * survival_measurement_v3.csv, duty_factor_v3.csv, pileup_numerator_robustness_v1.json)
- * and to manuscript package v76. If this file and the paper disagree, the paper wins.
+ * survival_measurement_v3.csv, duty_factor_v3.csv) and to manuscript package v80. A prior
+ * package fitted a maximum counted rate from a dead time and a strike cross section, with
+ * a matching minimum work-cycle time; that fit was withdrawn in v80 and replaced with a
+ * direct, unfitted measurement of how often a second strike hides inside the host's
+ * detection latency. If this file and the paper disagree, the paper wins.
  */
 (function (root, factory) {
   "use strict";
@@ -23,13 +30,13 @@
   "use strict";
 
   var RELEASE = Object.freeze({
-    schemaVersion: "flux-selection-design-tool-v3-2026-09-18",
-    releaseDate: "2026-09-18",
-    manuscript: "TNS_REMEDIATION_2026-09-17-v76",
-    supersedes: "flux-primary-design-tool-v2-2026-09-11"
+    schemaVersion: "flux-selection-design-tool-v4-2026-09-22",
+    releaseDate: "2026-09-22",
+    manuscript: "TNS_REMEDIATION_2026-09-22-v80",
+    supersedes: "flux-selection-design-tool-v3-2026-09-18"
   });
 
-  var THETA_DEFAULT = 0.80;
+  var THETA_DEFAULT = 0.90;
   var FLUENCE_TARGET_DEFAULT = 1e7;
   var W_DEFAULT_S = 0.200;
   var FLUX_DEFAULT = 5e4;
@@ -63,24 +70,40 @@
     Object.freeze({ id: "FRAM_B200",         label: "FRAM, B=200, 16 MHz",        W_s: 0.814114, phi: 48448, attempted: 75,    lost: 35,  theta: 0.533333, thetaLo: 0.414454, thetaHi: 0.649500, tau_s: 0.6099, D: 0.3952 })
   ]);
 
-  /* Paralyzable dead-time model (Knoll): lambda(phi) = sigma_fit*phi*exp(-sigma_fit*phi*tau_d),
-   * peak at phi* = 1/(sigma_fit*tau_d). Fitted on the LET 2.3-4.1 group of
-   * FRAM_B1_Throttled's flux sweep, the only group with runs on both sides of its peak.
-   * tau_d is measured, sigma_fit is fitted. sigma_fit is a fit parameter, not a device
-   * constant, and does not transfer across LET. The reset-counter refit is a robustness
-   * check on the numerator. tauDComparisonLET is the measured dead time at the
-   * comparison LET, used with sigma_cyc to bound the peak there. */
-  var PILEUP = Object.freeze({
-    sigmaFit: 1.1565216965546373e-4,
-    tauD: 0.33186442865266824,
-    phiStar: 26054.666041706463,
-    r2: 0.9406,
-    letGroup: "2.3-4.1 MeV cm^2/mg",
-    runs: 4,
-    resetCounter: Object.freeze({ sigmaFit: 1.2147228435274006e-4, phiStar: 24806.306009868946, r2: 0.9628 }),
-    tauDComparisonLET: 0.414,
-    illustrativeTauD: 1.0,
-    source: "analysis/pileup_numerator_robustness_v1.json"
+  /* Functional-interrupt cross section from the device's own reset counter, over
+   * beam-on exposure. Comparable on five of the six builds (SRAM_B1's counter could not
+   * be reconstructed). pooled is the count-weighted rate across those five; range is the
+   * per-build spread. This is the sigma_FI that feeds hiddenShare below, not sigma_cyc. */
+  var SIGMA_FI = Object.freeze({
+    pooled: 9.4e-6,
+    range: Object.freeze([7.7e-6, 11.1e-6]),
+    spreadFold: 1.4,
+    comparableBuilds: 5,
+    source: "testing-opt.tex Sec. III-B (functional-interrupt comparison)"
+  });
+
+  /* Hidden interrupts: a second, independent strike that lands after one reset but
+   * before the host has resynchronized causes another reset that opens no new recovery
+   * episode, so it is never counted (the counting loss known from radiation detectors,
+   * Knoll). The device's reset counter records these hidden resets but also credits
+   * repeated resets after a single event, so its excess over the host's count is not all
+   * hidden strikes. DETECTION is the campaign's measured phase split at the comparison
+   * condition, four FRAM builds: reset during computation, host reads within
+   * milliseconds; reset outside computation, host waits t_det for a pulse; a timeout,
+   * which cannot be split around detection; and resynchronizing under beam after
+   * detection. hiddenShare below is the unfitted expectation for the first two phases if
+   * every hidden reset were an independent strike landing inside t_det. */
+  var DETECTION = Object.freeze({
+    duringComputation: Object.freeze({ hidden: 0, of: 150 }),
+    waitingOnPulse: Object.freeze({ hidden: 62, of: 338 }),
+    timeout: Object.freeze({ hidden: 19, of: 75 }),
+    resyncUnderBeam: Object.freeze({ approx: 0.02, detail: "3 of 150 and 8 of 338" }),
+    tDetDefault_s: 0.25,
+    oneInEleven: 1 / 11,
+    resetLoops: Object.freeze({ count: 14, lo: 21, hi: 62 }),
+    magnitudeRange: Object.freeze([0.06, 0.15]),
+    afterDetectionPoints: 0.02,
+    source: "testing-opt.tex Sec. IV-B (recovery time in the flux choice)"
   });
 
   var CAMPAIGN = Object.freeze({
@@ -88,10 +111,8 @@
     lostTotal: 588,
     workCycleRangeFold: 41,
     thetaRange: Object.freeze([0.51, 0.98]),
-    longestW_s_at_design: 0.28527,       /* theta 0.80, phi 5e4, sigma_cyc */
-    shortestW_s_range: Object.freeze([0.074, 0.092]), /* theta 0.80, tau_d 0.33-0.41 */
-    ceilingRange: Object.freeze([1.5e5, 1.9e5]),      /* 1/(sigma_cyc tau_d) at comparison LET */
-    testTimeNoExposure: Object.freeze([0.35, 0.72]),
+    longestW_s_at_design: 0.13469,       /* theta 0.90, phi 5e4, sigma_cyc; the paper prints 135 ms */
+    testTimeNoExposure: Object.freeze([0.34, 0.72]),
     inCycleShare: Object.freeze([0.32, 0.56]),
     settle_s: 0.165,
     resyncFailureShare: 0.04,
@@ -170,26 +191,16 @@
     return (1 - theta) * tau / W;
   }
 
-  /* --- Pileup bound. The direct count is a lower bound on the strike rate and pileup
-   * can only suppress a counted rate, so the peak sits no higher than 1/(sigma_cyc tau_d).
-   * The shortest cycle a target theta allows at that peak is -ln(theta) tau_d; the cross
-   * section cancels. --- */
-  function ceilingFlux(sigma, tauD) {
-    requirePositive(sigma, "sigma_cyc"); requirePositive(tauD, "dead time");
-    return 1 / (sigma * tauD);
-  }
-  function shortestW(theta, tauD) {
-    requireTheta(theta); requirePositive(tauD, "dead time");
-    return -Math.log(theta) * tauD;
-  }
-  function countedRate(sigmaFit, phi, tauD) {
-    if (!Number.isFinite(phi) || phi <= 0) return 0;
-    return sigmaFit * phi * Math.exp(-sigmaFit * phi * tauD);
-  }
-  /* Fraction by which a counted rate at phi sits below the unsuppressed line. */
-  function suppression(sigma, phi, tauD) {
-    requirePositive(sigma, "sigma"); requirePositive(phi, "flux"); requirePositive(tauD, "dead time");
-    return 1 - Math.exp(-sigma * phi * tauD);
+  /* --- Hidden interrupts. The expectation that an interrupt hides a second, independent
+   * strike, if every hidden reset were an independent strike landing inside the
+   * detection latency t_det. This is an unfitted expectation, not a fit: it uses the
+   * pooled sigma_FI directly, the way sigma_cyc*phi is a rate with no fitted parameter.
+   * The campaign's measured 18% after a fixed 0.25 s wait runs above this estimate,
+   * because it also includes repeated resets after a single event. --- */
+  function hiddenShare(sigmaFI, phi, tDet) {
+    requirePositive(sigmaFI, "sigma_FI"); requirePositive(phi, "flux");
+    if (!Number.isFinite(tDet) || tDet < 0) throw new RangeError("detection latency must be finite and nonnegative");
+    return 1 - Math.exp(-sigmaFI * phi * tDet);
   }
 
   function facilitiesAchieving(flux) {
@@ -231,6 +242,23 @@
   function warnBox(title, body, bad) {
     return '<div class="warnbox' + (bad ? " bad" : "") + '"><b>' + title + "</b>" + body + "</div>";
   }
+  /* Renders DETECTION as the phase-split table rows used on recovery.html and
+   * background.html, so both pages read the same numbers from one place. */
+  function detectionRows() {
+    var d = DETECTION;
+    function cell(hidden, of) {
+      if (hidden === 0) return "0 of " + of;
+      return Math.round((hidden / of) * 100) + "% (" + hidden + " of " + of + ")";
+    }
+    return "<tr><td>Reset during computation, host reads within milliseconds</td><td>" +
+        cell(d.duringComputation.hidden, d.duringComputation.of) + "</td></tr>" +
+      "<tr><td>Reset outside computation, host waits " + d.tDetDefault_s + " s for a pulse</td><td>" +
+        cell(d.waitingOnPulse.hidden, d.waitingOnPulse.of) + "</td></tr>" +
+      "<tr><td>Timeout of 5 or 10 s, not split around detection</td><td>" +
+        cell(d.timeout.hidden, d.timeout.of) + "</td></tr>" +
+      "<tr><td>Resynchronizing under beam, after detection</td><td>about " +
+        Math.round(d.resyncUnderBeam.approx * 100) + "% (" + d.resyncUnderBeam.detail + ")</td></tr>";
+  }
 
   return Object.freeze({
     RELEASE: RELEASE,
@@ -239,8 +267,9 @@
     W_DEFAULT_S: W_DEFAULT_S,
     FLUX_DEFAULT: FLUX_DEFAULT,
     SIGMA_CYC: SIGMA_CYC,
+    SIGMA_FI: SIGMA_FI,
     CONFIGS: CONFIGS,
-    PILEUP: PILEUP,
+    DETECTION: DETECTION,
     CAMPAIGN: CAMPAIGN,
     FACILITIES: FACILITIES,
     cleanFraction: cleanFraction,
@@ -251,11 +280,8 @@
     dutyFactor: dutyFactor,
     thetaForDuty: thetaForDuty,
     recoveryCharge: recoveryCharge,
-    ceilingFlux: ceilingFlux,
-    shortestW: shortestW,
-    countedRate: countedRate,
-    suppression: suppression,
+    hiddenShare: hiddenShare,
     facilitiesAchieving: facilitiesAchieving,
-    sci: sci, dur: dur, metric: metric, warnBox: warnBox
+    sci: sci, dur: dur, metric: metric, warnBox: warnBox, detectionRows: detectionRows
   });
 });

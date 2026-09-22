@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Flux and work cycle | Dynamic SEE Test Design</title>
 <meta name="description" content="Choose a heavy-ion test flux, or the longest work cycle a flux allows, from one cross section and a target share of surviving work cycles.">
-<link rel="stylesheet" href="assets/style.css?v=20260918">
+<link rel="stylesheet" href="assets/style.css?v=20260922">
 <script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['$$','$$']]},options:{skipHtmlTags:['script','noscript','style','textarea','pre']}};</script>
 <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 </head>
@@ -63,10 +63,10 @@
       <p class="help">Sets the wall-clock time at the recommended flux.</p>
     </div>
     <div class="field wide">
-      <label for="inputTheta">Target clean-cycle fraction \(\theta\) = <span id="thetaValue">80</span> %</label>
-      <input id="inputTheta" type="range" min="50" max="99" step="1" value="80">
+      <label for="inputTheta">Target clean-cycle fraction \(\theta\) = <span id="thetaValue">90</span> %</label>
+      <input id="inputTheta" type="range" min="50" max="99" step="1" value="90">
       <p class="help">The share of attempted work cycles you want to survive. The choice is yours.
-      The companion paper illustrates with 0.80; the published method sets \(\theta\) indirectly by
+      The companion paper illustrates with 0.90; the published method sets \(\theta\) indirectly by
       maximizing the chance of seeing a rarer failure first, and other guidance suggests about ten
       cycles between two losses of function.</p>
     </div>
@@ -111,7 +111,7 @@
 <section class="card">
   <h2>Where to go next</h2>
   <div class="next-links">
-    <a class="next-link" href="recovery.html"><b>With recovery time</b><span>Charge the test for the time a lost cycle costs, and check the flux against the pileup ceiling.</span></a>
+    <a class="next-link" href="recovery.html"><b>With recovery time</b><span>Charge the test for the time a lost cycle costs, and see how a detection delay can hide a second strike.</span></a>
     <a class="next-link" href="background.html"><b>Model and evidence</b><span>The relation, the six-build measurement behind \(\sigma_{\mathrm{cyc}}\), and every quantity defined.</span></a>
   </div>
 </section>
@@ -122,7 +122,7 @@
   <p>Companion to Hudson, Hunnicutt and Loveless, "Design Strategies for Dynamic Single-Event Effect Testing of Algorithmic Computation," IEEE Trans. Nucl. Sci. (RADECS 2026). IU Center for Reliable and Trusted Electronics.</p>
 </div></footer>
 
-<script src="assets/model.js?v=20260918"></script>
-<script src="assets/main.js?v=20260918"></script>
+<script src="assets/model.js?v=20260922"></script>
+<script src="assets/main.js?v=20260922"></script>
 </body>
 </html>

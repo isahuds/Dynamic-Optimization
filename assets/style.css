@@ -181,3 +181,6 @@ input[type="range"]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;b
 /* Formula highlight */
 .formula-box{background:#fbeeec;border:1px solid #eccbc5;border-radius:8px;padding:18px 22px;margin:12px 0;text-align:center}
 .formula-box mjx-container{font-size:1.15em}
+
+/* Figures copied from the companion paper */
+.fig{max-width:100%;height:auto;display:block;border:1px solid var(--line);border-radius:8px;margin-top:12px;background:#fff}
