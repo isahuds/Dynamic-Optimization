@@ -3,172 +3,225 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Model &amp; caveats | Dynamic SEE Test Optimization</title>
-<meta name="description" content="The flux-primary formula, the pileup ceiling, the rate hierarchy, and why excluding recovery time does not fix the rate.">
-<link rel="stylesheet" href="assets/style.css?v=20260911">
+<title>Model and evidence | Dynamic SEE Test Design</title>
+<meta name="description" content="The flux-selection relation, the heavy-ion measurement that tests it, the recovery and pileup extensions, and every quantity defined.">
+<link rel="stylesheet" href="assets/style.css?v=20260918">
 <script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['$$','$$']]},options:{skipHtmlTags:['script','noscript','style','textarea','pre']}};</script>
 <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 </head>
 <body>
 <header class="site-header"><div class="wrap">
-  <h1>Model derivation and caveats</h1>
-  <p class="tagline">The flux-primary model, its assumptions, and the evidence that constrains them.</p>
+  <h1>Dynamic SEE Test Design</h1>
+  <p class="tagline">The relation the two tools implement, and the campaign that measured it.</p>
 </div></header>
 <nav class="site-nav"><ul>
-  <li><a href="index.html">Pre-campaign tool</a></li>
-  <li><a href="glossary.html">Glossary</a></li>
-  <li><a href="unknown.html">Prospective statistics</a></li>
-  <li><a href="background.html" class="active">Model &amp; caveats</a></li>
-  <li><a href="validation.html">Campaign evidence</a></li>
+  <li><a href="index.html">Flux and work cycle</a></li>
+  <li><a href="recovery.html">With recovery time</a></li>
+  <li><a href="background.html" class="active">Model and evidence</a></li>
 </ul></nav>
 
 <main class="wrap">
 
-<section class="card">
-  <h2>The flux-primary formula: why one number isn't enough</h2>
-  <p>A work cycle of length \(W\) survives an interruption-free run with probability
-  \(e^{-\lambda W}\). Pick a target clean-cycle fraction \(\theta\) and solve for the interruption
-  rate that hits it:</p>
-  $$\lambda_{\text{target}}=\frac{-\ln(\theta)}{W}.$$
-  <p>That gives one pull toward <strong>low flux</strong>: fewer interruptions, more of your work
-  cycles survive clean. The other pull comes from wanting to reach a target fluence \(\Phi\) in
-  minimum wall-clock time, \(T=\Phi/\phi\), which favors <strong>high flux</strong> with no ceiling
-  of its own. It is tempting to look for a flux that balances both at once, but they do not meet
-  in the middle. Using the verified-output rate \(\dot N_V\) below, the number of clean cycles
-  accumulated by the time a fixed fluence target is reached keeps improving as flux falls toward
-  zero. An unboundedly long, unboundedly low-flux campaign racks up unboundedly many clean cycles.
-  There is no interior flux that is simultaneously best for both objectives.</p>
-  <p>That is why \(\theta\) has to come from the experimenter, not from the physics. Fixing a target
-  clean-cycle fraction turns an open-ended tradeoff into a single well-posed answer: the highest flux
-  consistent with your own quality bar, and the wall time that flux implies. Loosening \(\theta\)
-  trades coverage for speed. Tightening it does the reverse. Neither direction is a mistake. It is
-  a choice this page can only surface, not make for you.</p>
+<section class="card intro" id="model">
+  <h2>The relation, and whose it is</h2>
+  <p>Published flux-selection methodology writes the share of surviving work cycles as one minus
+  the probability that an interrupt arrives within the cycle, evaluated over the fluence delivered
+  during it (Zimmaro et al., RADECS 2022). For interruptions arriving at a constant rate it reduces
+  to the exponential, the survival form long used in checkpointed computation (Young 1974; Daly
+  2006):</p>
+  <div class="formula-box">$$\theta = e^{-\sigma_{\mathrm{cyc}}\,\phi\,W}\qquad\qquad \phi\,W=\frac{-\ln\theta}{\sigma_{\mathrm{cyc}}}$$</div>
+  <p>\(\sigma_{\mathrm{cyc}}\) is the cross section for losing a work cycle and \(\phi W\) is the
+  fluence one cycle receives, so a cycle survives or not according to the exposure it accumulates
+  while it runs. Writing the exponent this way holds the cross section constant in flux, which is the
+  case while each strike acts on its own.</p>
+  <p>The published method was developed for system-level proton and mixed-field testing, where the
+  work cycle was fixed by the application and the survival term was computed from a measured
+  cross section rather than counted. The companion paper varies the work cycle 41-fold on heavy ions
+  at component level, counts the surviving cycles directly, and charges the recovery time. Those
+  three things, and the pileup bound below, are what it adds.</p>
 </section>
 
-<section class="card">
-  <h2>Pileup, in plain terms</h2>
-  <p>At high enough flux, a new ion can strike while the device is still recovering from the last
-  one. That second strike does not register as a separate interruption, because there was no
-  running work cycle left for it to interrupt. The device was already down. So the
-  <em>measured</em> interruption rate \(\lambda\) does not climb forever with flux. It rises, peaks,
-  and can fall again, even though the true rate of physical strikes keeps climbing.</p>
-  <p>This campaign measured that curve directly, with 35 runs spanning a 3-decade flux range, fitted to
-  \(\lambda(\phi)=k\phi e^{-k\phi\tau}\) below. Most test campaigns will not have the beam time for a
-  sweep like that, and do not need it. The practical version: pilot at a candidate flux, measure
-  \(\lambda\) directly, and watch what happens as you raise flux across a couple of pilots. If
-  \(\lambda\) keeps climbing, you are still on the safe side. If it flattens or drops, you have
-  crossed into pileup. Back off rather than push further, since the apparent time savings from more
-  flux is not real past that point.</p>
-  <p>This is also where the two formulas above meet. If your target \(\lambda_{\text{target}}\) is
-  higher than the interruption rate ever gets even at the pileup peak, your clean-cycle target was
-  never the binding constraint. Pileup fidelity is the binding constraint instead, and the honest
-  recommendation is to cap flux at
-  the peak (or comfortably below it), not to claim an unreachable target is satisfied. The
-  <a href="index.html">pre-campaign tool</a> handles this distinction automatically and tells you
-  which constraint is actually binding for your numbers.</p>
+<section class="card" id="validation">
+  <h2>The measurement behind \(\sigma_{\mathrm{cyc}}\)</h2>
+  <p>Six firmware builds of an FIR filter ran on the MSP430FR6989 at a flux held within 11% of
+  \(5\times10^{4}\) cm⁻² s⁻¹ and one LET (7.9 MeV·cm²/mg), with the work cycle set by batch size
+  and clock choice from 20 ms to 814 ms. A lost cycle is one in which a host-detected interrupt
+  occurred, whatever the cycle returned. Of 20,459 cycles attempted, 588 were lost. The fraction
+  that survived uses neither \(\sigma_{\mathrm{cyc}}\) nor \(W\), so comparing it against the
+  relation tests the formula rather than restating it.</p>
+  <div class="table-wrap"><table class="validation">
+    <thead><tr><th>Build</th><th>\(W\)</th><th>Attempted</th><th>Lost</th><th>\(\theta\) measured [95%]</th><th>\(\theta\) from the fit</th></tr></thead>
+    <tbody id="fitTable"></tbody>
+  </table></div>
+  <div class="metrics" id="fitMetrics"></div>
+  <p>A fit on the counted fractions, taking each build at its own flux and work-cycle time, gives
+  one cross section shared across all six, and it carries across the whole range. Fitted to the
+  three pure-FRAM 16 MHz builds alone, where storage and clock are fixed while \(W\) still spans the
+  full range, it gives \(1.49\times10^{-5}\) cm². The paper also examines whether one value
+  serves every build and whether a cycle's risk stays constant while it runs; see its Section IV-A
+  for those tests.</p>
+  <h3>Which cross section feeds the relation</h3>
+  <p>The campaign produced three candidates. \(\sigma_{\mathrm{cyc}}\) counts lost cycles over the
+  fluence delivered while a cycle was running. The functional-interrupt cross section from the
+  device's reset counter, \(\sigma_{\mathrm{FI}}\), and the one from the host's recovery record,
+  \(\sigma_{\mathrm{det}}\), count over the full beam-on fluence. Both give higher counts and higher
+  exposures, and the second effect wins: beam-on fluence credits exposure during windows in which
+  no work cycle could be interrupted. The host's record gives a rate of 0.42 s⁻¹ at the matched flux
+  against the fitted 0.78 s⁻¹, and the curve it implies lies above every measured point. A cross
+  section over full beam-on exposure will overstate the clean-cycle fraction in proportion to how
+  much time the device spends outside its work cycle, whatever puts it there.</p>
 </section>
 
-<section class="card">
-  <h2>Flux and pileup</h2>
-  <p>The trigger rate depends on beam flux through a paralyzable pileup mechanism:</p>
-  $$\lambda(\phi)=k\phi\,e^{-k\phi\tau}$$
-  <p>Fitted to the within-firmware subset with the widest flux range (35 runs,
-  \(1.1\times10^{3}\) to \(1.2\times10^{5}\) cm\(^{-2}\)s\(^{-1}\)):</p>
-  <div class="table-wrap"><table>
-    <thead><tr><th>Parameter</th><th>Value</th><th>Interpretation</th></tr></thead>
+<section class="card" id="recovery">
+  <h2>Recovery time in the flux choice</h2>
+  <p>Charged for the time it spends recovering, the campaign spent 35% to 72% of its test time
+  buying no countable exposure, depending on the build. Let \(\tau\) be the mean recovery time per
+  lost cycle. The duty factor is the surviving cycle time over the sum of cycle time and the
+  recovery expected per cycle:</p>
+  <div class="formula-box">$$D=\frac{\theta W}{W+(1-\theta)\tau}\qquad\qquad \theta=\frac{D\,(W+\tau)}{W+D\,\tau}$$</div>
+  <p>Setting \(\tau=0\) returns \(D=\theta\), so this extends the published relation rather than
+  replacing it. \(D\) is the test-time counterpart of the availability that system-level guidance
+  computes for a mission from downtime and cross section (Coronetti et al., TNS 2021). ESCC 25100
+  asks that a comparable active-time share be measured and applied to a cross section.</p>
+  <p>The charge a build pays is \((1-\theta)\tau/W\). A short cycle carries a high ratio of
+  recovery time to cycle time, but it also loses a correspondingly smaller share of its cycles, and
+  the two effects cancel: with \(1-\theta\) rising in proportion to \(W\), the work-cycle time drops
+  out and the charge is left to \(\tau\). FRAM_B1 runs a 20 ms cycle and takes 1.17 s to recover
+  from a loss, about sixty cycle-lengths, but loses only 1.6% of its cycles, and 1.6% of sixty is
+  close to one, so it spends about as long recovering as computing. Its clean-cycle fraction is 0.98
+  and its duty factor 0.51. The two builds that keep the most cycles rank third and fourth on duty
+  factor. Counting only the cycle time that returned a clean result, against beam-on time,
+  reproduces that order with no model involved.</p>
+  <p>\(\tau\) is measured, as the mean episode duration times the episodes a lost cycle carried,
+  and runs 0.58 to 1.28 s here. Every build settled in the same 0.165 s when the automatic path
+  worked; the cost lives in the tail, where a failed resynchronization costs a host timeout of five
+  or ten seconds. Automatic recovery restored function in 95.3% of cases scored on delivered work,
+  manual recovery in 96.4%, indistinguishable; scoring every censored case as a failure gives 71.4%.
+  A campaign that pauses the beam to recover does not escape the charge, since \(\tau\) then moves
+  from its beam-on budget to its facility budget: an escalated recovery cost a mean of 93.7 s
+  against a median pause of 84.6 s.</p>
+</section>
+
+<section class="card" id="pileup">
+  <h2>Pileup and the limit of a counted rate</h2>
+  <p>While the host is inside a recovery episode it is waiting on the device rather than watching
+  for new faults, so a second strike opens no second count. This is a second hazard, distinct from
+  the one the relation bounds: there, too much flux costs clean cycles and recovery time; here, the
+  rate the experiment seeks to quantify is directly suppressed. In a paralyzable dead-time model
+  (Knoll) every strike that lands during recovery restarts the dead time, and the counted rate is</p>
+  <div class="formula-box">$$\lambda(\phi)=\sigma_{\mathrm{fit}}\,\phi\,e^{-\sigma_{\mathrm{fit}}\phi\tau_d},\qquad \phi^{*}=\frac{1}{\sigma_{\mathrm{fit}}\tau_d}$$</div>
+  <div class="metrics" id="pileupMetrics"></div>
+  <p>Only the LET 2.3 to 4.1 group of one build's flux sweep carries runs on both sides of its
+  maximum. There \(\tau_d\) is measured from the sweep's own records and only
+  \(\sigma_{\mathrm{fit}}\) is fitted. The counted rate sits 11% below the unsuppressed line at
+  \(3\times10^{3}\) cm⁻² s⁻¹, a third below it at \(10^{4}\), and 63% below it at the peak. What
+  \(\phi^{*}\) marks is not the onset of error but the flux past which more beam returns fewer
+  counts. Refitting on the device's own reset counter instead of the host's record moves the peak by
+  under 5%, so the ceiling does not depend on the instrument. An illustrative dead time of one
+  second, the slow tail of this campaign's own detections, moves the peak three times lower, to
+  about 8,600 cm⁻² s⁻¹.</p>
+  <p>\(\sigma_{\mathrm{fit}}\) is a fit parameter, not a device constant: it sits sevenfold above
+  \(\sigma_{\mathrm{cyc}}\) at the comparison LET, backwards for a cross section rising with LET, and
+  it does not transfer across LET. At the comparison LET the direct count bounds the strike rate
+  with no pileup model involved, and pileup can only suppress a counted rate, so the peak there sits
+  no higher than \(1/(\sigma_{\mathrm{cyc}}\tau_d)\): 1.5 to \(1.9\times10^{5}\) cm⁻² s⁻¹ with
+  \(\tau_d\) between 0.33 and 0.41 s, three to six times the flux the comparison builds used. The
+  clean-cycle fraction itself is not suppressed this way, since a cycle that carries a second strike
+  is lost once either way.</p>
+  <p>A flux the test cannot exceed also sets a shortest work cycle it can run, since the relation
+  fixes \(\phi W\) and the peak caps how much flux there is to buy: \(W_{\min}=-\ln\theta\,\tau_d\),
+  or 74 to 92 ms at \(\theta=0.80\). The paper treats pileup as a risk to be respected rather than a
+  correction to be applied, and reports no suppression-corrected rate. Pausing the beam on
+  detection, or closing a shutter as previous heavy-ion tests have (Wilcox et al. 2017; TI's
+  MSP430FR5969-SP report), removes recovery from the exposed window but not the latency before it,
+  so a floor remains wherever a second strike can land before the host is watching again.</p>
+</section>
+
+<section class="card" id="quantities">
+  <h2>Quantities</h2>
+  <p class="note">As defined in the companion paper's Table III, with the time base each rate is
+  measured on.</p>
+  <div class="table-wrap"><table class="symbols">
+    <thead><tr><th>Quantity</th><th>Meaning</th><th>Where measured</th></tr></thead>
     <tbody>
-      <tr><td>\(k\)</td><td>\(1.072\times10^{-4}\) cm²</td><td>per-ion trigger cross section in the small-flux limit</td></tr>
-      <tr><td>\(\tau\)</td><td>0.4275 s</td><td>dead time per trigger (paralysis window)</td></tr>
-      <tr><td>\(\phi^{*}=1/(k\tau)\)</td><td>\(21{,}826\pm1{,}448\) cm\(^{-2}\)s\(^{-1}\) (6.6%, delta method)</td><td>peak trigger rate (pileup onset)</td></tr>
+      <tr><td>Beam-on time</td><td>Time the beam was on the device.</td><td>paper §III-A</td></tr>
+      <tr><td>In-cycle time</td><td>The part of beam-on time spent inside work cycles.</td><td>§III-B</td></tr>
+      <tr><td>Recovery time</td><td>The part of beam-on time spent restoring the device after an interruption. Recoveries that paused the beam are counted separately.</td><td>§III-A</td></tr>
+      <tr><td>Countable exposure</td><td>Fluence delivered during work cycles that survive.</td><td>§IV-B</td></tr>
+      <tr><td>\(W\)</td><td>Work-cycle time, from input reception to output transmission, measured event-free.</td><td>§II-B</td></tr>
+      <tr><td>\(\theta\)</td><td>Clean-cycle fraction, the share of attempted work cycles that survive.</td><td>§IV-A</td></tr>
+      <tr><td>\(\phi\)</td><td>Flux, cm⁻² s⁻¹.</td><td>§II</td></tr>
+      <tr><td>\(\sigma_{\mathrm{cyc}}\)</td><td>Cross section for losing a work cycle, cm², fitted to the direct count of surviving cycles; \(\sigma_{\mathrm{cyc}}\phi\) is the lost-cycle rate per second of in-cycle time.</td><td>§IV-A</td></tr>
+      <tr><td>\(\sigma_{\mathrm{FI}}\)</td><td>Cross section for functional interrupts, cm², counted from the device's reset counter over beam-on exposure.</td><td>§III-B</td></tr>
+      <tr><td>\(\sigma_{\mathrm{det}}\)</td><td>Cross section for host-detected interrupts, cm², counted from the recovery record over beam-on exposure; matches \(\sigma_{\mathrm{cyc}}\) in neither count nor exposure basis.</td><td>§IV-A</td></tr>
+      <tr><td>\(\tau\)</td><td>Mean recovery time per lost cycle.</td><td>§IV-B</td></tr>
+      <tr><td>\(D\)</td><td>Duty factor, the share of in-cycle plus recovery time that yields countable exposure.</td><td>§IV-B</td></tr>
+      <tr><td>\(\tau_d\)</td><td>Dead time after one interruption, during which a second strike is not counted; one lost cycle may carry several.</td><td>§IV-C</td></tr>
+      <tr><td>\(\phi^{*}\)</td><td>Flux at which the counted interruption rate peaks, \(1/(\sigma_{\mathrm{fit}}\tau_d)\).</td><td>§IV-C</td></tr>
+      <tr><td>\(\sigma_{\mathrm{fit}}\)</td><td>Strike cross section, cm², fitted by the pileup model to one LET group; a fit parameter, not a device constant.</td><td>§IV-C</td></tr>
+      <tr><td>\(\Phi\), \(T\)</td><td>Target fluence and the wall-clock time to reach it, \(T=\Phi/\phi\). Site-only conveniences.</td><td>this site</td></tr>
     </tbody>
   </table></div>
-  <p>Exposure time here is a per-run measure built from logged compute-call windows, more precise
-  than a single facility-reported elapsed value; the coarser measure gives a statistically
-  indistinguishable fit (\(k=1.069\times10^{-4}\), \(\tau=0.4406\) s, peak \(21{,}234\pm1{,}438\)),
-  with a slightly worse \(R^2\) (0.366 vs. 0.386 below), so the more precise measure is used
-  throughout.</p>
-  <p>The fit quality is \(R^2=0.386\), which is the best among the models tried (flat-saturation
-  \(R^2=0.11\), power law \(R^2=0.004\)) but not a strong absolute fit, and fragile in its parameter
-  estimates specifically: two individual runs account for most of the gap to \(R^2=0.44\) when either
-  is excluded, shifting \(k\) and \(\tau\) by 15% and 9%. The model choice itself is not fragile the
-  same way. Refitting with both runs excluded still favors this paralyzable form by a wider
-  margin, not a narrower one. The fitted peak falls inside the untested gap between the campaign's
-  low- and high-flux clusters.</p>
-  <p>The key insight for design: a rate measured at one flux does not transfer to another. A short
-  pilot at the flux you intend to run is essential.</p>
-  <p><strong>Why this tool never recommends a flux above \(\phi^*\).</strong> The clean-cycle fraction
-  \(\theta=e^{-\lambda W}\) is computed from whichever \(\lambda\) you give it, and \(\lambda\) itself
-  is suppressed by pileup once flux passes \(\phi^*\): a device that is failing to keep up looks
-  <em>quieter</em>, not louder, because closely spaced triggers merge into fewer counted recoveries.
-  Computing \(\theta\) from that suppressed rate does not merely lose precision near the peak; it gets
-  systematically more optimistic exactly where it should become less trustworthy, since the formula
-  has no way to know the rate it was given is already an undercount. This is not hypothetical: at one
-  campaign configuration's own tested flux, 2.3\(\times\) its fitted peak, the model predicts the
-  observed rate to within 7.1% (the fit is trustworthy at this exact point, not a wild
-  extrapolation), and the reported clean-cycle fraction from raw \(\lambda\) was 0.965; the same
-  fit's intrinsic, pre-suppression rate implies the true figure is 0.676, a 28.9-percentage-point
-  gap and a 9.3\(\times\) understatement of the interrupted-cycle fraction. Across the full 35-run
-  sweep this gap is near zero below the fitted peak and grows past it, reaching 0.60
-  (0.986 reported vs. 0.387 intrinsic) at the sweep's highest-flux tail. A leave-one-out check on the
-  two most influential fit points (above) moves these numbers to roughly 0.25–0.33 (published 0.29),
-  8.1–10.4\(\times\) (published 9.3\(\times\)), and 0.54–0.65 (published 0.60) respectively — stable
-  in direction and rough scale, not pinned down to better than about \(\pm15\%\). This is why
-  <a href="index.html">the flux recommendation</a> only ever searches the rising branch, up to
-  \(\phi^*\), returning the peak itself as a flux ceiling rather than a flux past it: any
-  \(\theta\) computed from an observed rate above \(\phi^*\) cannot be trusted at face value. If you
-  independently compute a clean-cycle fraction from a rate measured above this device's own fitted
-  peak, elsewhere or with a different device, treat it the same way.</p>
+  <p class="help">Counted errors are functional interrupts and corruption events. The paper avoids
+  SEFI and SEU for them because single-particle attribution cannot be established for these
+  events. The site follows.</p>
 </section>
 
-<section class="card">
-  <h2>Why "just exclude recovery time" doesn't fix this</h2>
-  <p>A natural next idea: if recovery time is what's being suppressed into the observed rate, why not
-  define exposure time to exclude it, and fit \(k\)/\(\tau\) against an "up-time-only" denominator
-  instead? This was checked directly. The pileup shape survives under that alternative denominator
-  (paralyzable still wins, \(R^2=0.307\) vs. \(0.386\)), and the peak flux itself is nearly unchanged
-  (19,742 vs. 21,826, about 7%, each within the other's 95% confidence interval) — but \(k\) and
-  \(\tau\) individually shift by roughly 53% and 30% and remain strongly anti-correlated under both
-  conventions (\(\rho\approx-0.92\)). Peak flux, not \(k\) or \(\tau\) alone, is the portable
-  quantity across exposure-time conventions.</p>
-  <p>More fundamentally, the exclusion is circular for this experimental design: how much time to
-  exclude for a given interruption depends on the same interruption rate the fit is trying to
-  estimate, so building it into the fit's own denominator feeds the model its own answer as an
-  input. Excluding recovery time from the accounting while the beam and device both stay engaged the
-  whole time does not change what the device was actually exposed to — only <em>physically</em>
-  removing the device from the beam during recovery (for example, an automated actuator that
-  withdraws the device on fault detection and returns it once recovery is confirmed) breaks the
-  circularity, because it removes real exposure rather than relabeling its accounting. Doing this
-  does not eliminate the blind spot above; it shrinks the risk to the actuator's own detection
-  latency, the delay between a fault occurring and the actuator acting on it, which this campaign
-  never measured directly and which would need to be weighed against the added mechanical and
-  accounting complexity of repeated pause/resume cycles.</p>
+<section class="card" id="facilities">
+  <h2>Facility flux ranges used by the tools</h2>
+  <p class="note">Sourced for the achievable-range line on the first page. TAMU is excluded because
+  its published materials give no numeric flux ceiling.</p>
+  <table>
+    <thead><tr><th>Facility</th><th>Heavy-ion flux (cm⁻² s⁻¹)</th><th>Source</th></tr></thead>
+    <tbody id="facilityTable"></tbody>
+  </table>
 </section>
 
-<section class="card">
-  <h2>Rate hierarchy</h2>
-  <p>Three rates appear in this project and are not interchangeable:</p>
-  <div class="table-wrap"><table>
-    <thead><tr><th>Symbol</th><th>Name</th><th>What it counts</th><th>Status</th></tr></thead>
-    <tbody>
-      <tr><td>\(\lambda\)</td><td>Operational trigger rate</td><td>Work-interrupting triggers per beam-burst second; every trigger costs one recovery whether or not it corresponds to an independent physical initiation</td><td><strong>Calibrated</strong></td></tr>
-      <tr><td>\(\lambda_{\mathrm{loss}}\)</td><td>Verified-service loss hazard</td><td>First entries into a grouped work-loss episode from online-verified productive service, over detector-live verified-productive time</td><td>Uncalibrated (no compatible at-risk clock)</td></tr>
-      <tr><td>\(\lambda_{\mathrm{SEFI}}\)</td><td>Physical SEFI rate</td><td>Device-side initiation evidence with independence adjudication</td><td>Withheld</td></tr>
-    </tbody>
-  </table></div>
-  <p>The design model uses \(\lambda\), not \(\lambda_{\mathrm{SEFI}}\). This is deliberate. The trigger
-  rate is what actually interrupts work and determines throughput, regardless of whether each trigger
-  corresponds to a physically independent event.</p>
+<section class="card" id="references">
+  <h2>References</h2>
+  <ul>
+    <li>Hudson, Hunnicutt, Loveless, "Design Strategies for Dynamic Single-Event Effect Testing of Algorithmic Computation," IEEE Trans. Nucl. Sci. (RADECS 2026). The companion paper; every number on this site traces to it.</li>
+    <li>Zimmaro et al., "Radiation testing of complex systems: a flux-selection methodology," RADECS 2022; and the 2024 follow-up. The flux-selection method.</li>
+    <li>Young, "A first order approximation to the optimum checkpoint interval," Commun. ACM, 1974; Daly, "A higher order estimate of the optimum checkpoint interval," Future Gener. Comput. Syst., 2006. The survival form.</li>
+    <li>Coronetti et al., IEEE Trans. Nucl. Sci., 2021. Availability from downtime and cross section; ten duty cycles between losses of function.</li>
+    <li>ESCC Basic Specification No. 25100. Active-time share and the dead-time cap.</li>
+    <li>Knoll, <em>Radiation Detection and Measurement</em>. The paralyzable dead-time model.</li>
+    <li>Wilcox et al., NASA GSFC 2017; Texas Instruments MSP430FR5969-SP heavy-ion report. Shutter arrangements that remove recovery from the exposed window.</li>
+  </ul>
 </section>
 
-<section class="card"><h2>Where to go next</h2><div class="next-links">
-  <a class="next-link" href="index.html"><b>Pre-campaign tool →</b><span>Use the flux-primary formula with your own numbers.</span></a>
-  <a class="next-link" href="validation.html"><b>Campaign evidence →</b><span>The counting census, operational statistics, and heterogeneity finding.</span></a>
-</div></section>
 </main>
 
 <footer class="site-footer"><div class="wrap">
-  <p>Companion analysis for Hudson et al., "Design Strategies for Dynamic Single-Event Effect Testing of Algorithmic Computation." IU Center for Reliable and Trusted Electronics.</p>
+  <p>Companion to Hudson, Hunnicutt and Loveless, "Design Strategies for Dynamic Single-Event Effect Testing of Algorithmic Computation," IEEE Trans. Nucl. Sci. (RADECS 2026). IU Center for Reliable and Trusted Electronics.</p>
 </div></footer>
-<script src="assets/model.js?v=20260911"></script>
+
+<script src="assets/model.js?v=20260918"></script>
+<script>
+(function () {
+  "use strict";
+  var S = window.SEE, sig = S.SIGMA_CYC;
+  document.getElementById("fitTable").innerHTML = S.CONFIGS.map(function (c) {
+    return "<tr><td>" + c.label + "</td><td>" + S.dur(c.W_s) + "</td><td>" + c.attempted + "</td><td>" + c.lost +
+      "</td><td>" + c.theta.toFixed(3) + " [" + c.thetaLo.toFixed(3) + ", " + c.thetaHi.toFixed(3) + "]</td><td>" +
+      S.cleanFraction(sig.value, c.phi, c.W_s).toFixed(3) + "</td></tr>";
+  }).join("");
+  document.getElementById("fitMetrics").innerHTML =
+    S.metric("σ_cyc, six builds", S.sci(sig.value, 2), " cm²", "95% interval " + S.sci(sig.ci95[0], 2) + " to " + S.sci(sig.ci95[1], 2) + "; " + (sig.value * sig.nominalFlux).toFixed(2) + " s⁻¹ at 5×10⁴", true) +
+    S.metric("σ_cyc, three pure-FRAM 16 MHz builds", S.sci(sig.threeBuild, 2), " cm²", (sig.threeBuild * sig.nominalFlux).toFixed(2) + " s⁻¹ at the same flux") +
+    S.metric("Host-record rate σ_det φ", sig.hostDetectedRate.toFixed(2), " s⁻¹", "lies above every measured point") +
+    S.metric("Longest W at θ = 0.80, 5×10⁴", S.dur(S.longestW(0.8, sig.value, 5e4)), "", "four of six builds sit under it; the two at B=200 exceed it about 2.8-fold");
+  var P = S.PILEUP;
+  document.getElementById("pileupMetrics").innerHTML =
+    S.metric("τ_d, measured", P.tauD.toFixed(3), " s", "LET " + P.letGroup + " group") +
+    S.metric("σ_fit", S.sci(P.sigmaFit, 2), " cm²", "fitted, R² " + P.r2.toFixed(2)) +
+    S.metric("φ*", S.sci(P.phiStar, 3), " cm⁻² s⁻¹", "reset-counter refit " + S.sci(P.resetCounter.phiStar, 3) + ", R² " + P.resetCounter.r2.toFixed(2)) +
+    S.metric("τ_d at the comparison LET", P.tauDComparisonLET.toFixed(3), " s", "used with σ_cyc for the 1.5 to 1.9×10⁵ bound");
+  document.getElementById("facilityTable").innerHTML = S.FACILITIES.map(function (f) {
+    var r = (f.fluxMin == null ? "up to " : S.sci(f.fluxMin) + " to ") + S.sci(f.fluxMax);
+    return "<tr><td>" + f.label + "</td><td>" + r + "</td><td class='note'>" + f.source + "</td></tr>";
+  }).join("");
+})();
+</script>
 </body>
 </html>

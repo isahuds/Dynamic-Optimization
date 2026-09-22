@@ -3,132 +3,126 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Pre-campaign design tool | Dynamic SEE Test Optimization</title>
-<meta name="description" content="Pick a flux for dynamic single-event effect testing by balancing clean-cycle fraction against time to reach your target fluence.">
-<link rel="stylesheet" href="assets/style.css?v=20260911">
+<title>Flux and work cycle | Dynamic SEE Test Design</title>
+<meta name="description" content="Choose a heavy-ion test flux, or the longest work cycle a flux allows, from one cross section and a target share of surviving work cycles.">
+<link rel="stylesheet" href="assets/style.css?v=20260918">
 <script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['$$','$$']]},options:{skipHtmlTags:['script','noscript','style','textarea','pre']}};</script>
 <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 </head>
 <body>
 <header class="site-header"><div class="wrap">
-  <h1>Dynamic SEE Test Optimization</h1>
-  <p class="tagline">Pick a flux for dynamic single-event effect testing by balancing clean-cycle fraction against time to reach your target fluence.</p>
+  <h1>Dynamic SEE Test Design</h1>
+  <p class="tagline">Match flux to work cycle so a chosen share of work cycles survives functional interrupts.</p>
 </div></header>
 <nav class="site-nav"><ul>
-  <li><a href="index.html" class="active">Pre-campaign tool</a></li>
-  <li><a href="glossary.html">Glossary</a></li>
-  <li><a href="unknown.html">Prospective statistics</a></li>
-  <li><a href="background.html">Model &amp; caveats</a></li>
-  <li><a href="validation.html">Campaign evidence</a></li>
+  <li><a href="index.html" class="active">Flux and work cycle</a></li>
+  <li><a href="recovery.html">With recovery time</a></li>
+  <li><a href="background.html">Model and evidence</a></li>
 </ul></nav>
 
 <main class="wrap">
 
-<section class="card">
-  <h2>Why this tool exists</h2>
-  <p>Dynamic single-event-effect testing runs real code on a device while it sits in a heavy-ion
-  beam, watching for crashes (SEFIs) that interrupt computation. Before you commit beam time, two
-  questions matter: <strong>how much flux can the device take before it spends more time recovering
-  than computing</strong>, and <strong>how long will it take to accumulate enough fluence to trust
-  your results</strong>? Those two questions pull in opposite directions. More flux means faster
-  fluence accumulation, but also more crashes. This tool turns that tension into one number, the
-  flux to dial in, held fixed for the whole run, and how long you'll need at the beam for it.</p>
-  <p class="note">Flux is the one lever this tool optimizes. Work-cycle timing is treated as fixed.
-  Most test designs can't freely change it, and it's application-specific, not a property of any one
-  device. Batch size, where a test happens to support it, is a separate, optional refinement covered
-  by the application, not a dial this tool assumes you can turn.</p>
+<section class="card intro">
+  <h2>What this page does</h2>
+  <p>A work cycle survives when it finishes without a functional interrupt. Its chance of doing so
+  depends on the flux, the length of the cycle, and one cross section for losing a cycle,
+  \(\sigma_{\mathrm{cyc}}\). A target share of surviving cycles \(\theta\) therefore fixes the
+  product of flux and work-cycle time. Read it one way and it is the flux to run for the work cycle
+  you have; read it the other way and it is the longest work cycle a flux you have already chosen
+  allows.</p>
+  <p class="note">The survival form is the one used for checkpointed computation (Young 1974; Daly
+  2006). Choosing flux from it is the method of Zimmaro et al. (RADECS 2022), which this site's
+  companion paper tests against a direct count of surviving cycles on heavy ions and extends. This
+  page charges nothing for recovery time; the <a href="recovery.html">recovery page</a> does.</p>
 </section>
 
 <section class="card">
-  <h2>The formula</h2>
-  <p>Enter your bench-measured work-cycle time and pick how much clean-cycle fraction you need. The
-  tool gives you the interruption rate that satisfies it, the number to converge on at the beam.</p>
+  <h2>Inputs</h2>
   <div class="grid">
-    <div class="field"><label for="inputW">Work-cycle time W</label>
-      <div class="inputrow"><input type="number" id="inputW" min="0" step="any" value="1000"><span class="unit">ms</span></div>
-      <p class="help">Bench-measured, checkpoint-to-checkpoint. Fixed by your application, not
-      something this tool assumes you can tune.</p>
+    <div class="field">
+      <label for="inputSigma">Lost-cycle cross section \(\sigma_{\mathrm{cyc}}\)</label>
+      <div class="inputrow"><input id="inputSigma" type="text" inputmode="decimal" value="1.564e-5"><span class="unit">cm²</span></div>
+      <p class="help">Lost work cycles over the fluence delivered while cycles were running, at the
+      test LET. Measure it in a short pilot. Prefilled with the companion campaign's value on the
+      MSP430FR6989 at LET 7.9 MeV·cm²/mg, which will not transfer to another device or LET.</p>
     </div>
-    <div class="field"><label for="inputFluence">Target fluence &Phi;</label>
-      <div class="inputrow"><input type="number" id="inputFluence" min="0" step="any" value="1e7"><span class="unit">ions cm⁻²</span></div>
-      <p class="help">A common target experimenters run to. Adjust to your own statistical needs.</p>
+    <div class="field">
+      <label for="inputW">Work-cycle time \(W\)</label>
+      <div class="inputrow"><input id="inputW" type="text" inputmode="decimal" value="200"><span class="unit">ms</span></div>
+      <p class="help">From input reception to result delivery, measured with the beam off so no
+      recovery is inside it.</p>
+    </div>
+    <div class="field">
+      <label for="inputFlux">Flux you plan to run \(\phi\)</label>
+      <div class="inputrow"><input id="inputFlux" type="text" inputmode="decimal" value="5e4"><span class="unit">cm⁻² s⁻¹</span></div>
+      <p class="help">Used for the second reading of the rule: the longest work cycle this flux allows.</p>
+    </div>
+    <div class="field">
+      <label for="inputFluence">Target fluence \(\Phi\)</label>
+      <div class="inputrow"><input id="inputFluence" type="text" inputmode="decimal" value="1e7"><span class="unit">ions cm⁻²</span></div>
+      <p class="help">Sets the wall-clock time at the recommended flux.</p>
     </div>
     <div class="field wide">
-      <label for="inputTheta">Target clean-cycle fraction &theta; = <span id="thetaValue">80</span>%</label>
-      <input type="range" id="inputTheta" min="30" max="99" step="1" value="80">
-      <p class="help">Probability a work cycle completes without an interruption. 80% is a
-      reasonable starting point, not a claimed standard. Raise it for higher-confidence coverage,
-      lower it to reach your fluence target faster.</p>
+      <label for="inputTheta">Target clean-cycle fraction \(\theta\) = <span id="thetaValue">80</span> %</label>
+      <input id="inputTheta" type="range" min="50" max="99" step="1" value="80">
+      <p class="help">The share of attempted work cycles you want to survive. The choice is yours.
+      The companion paper illustrates with 0.80; the published method sets \(\theta\) indirectly by
+      maximizing the chance of seeing a rarer failure first, and other guidance suggests about ten
+      cycles between two losses of function.</p>
     </div>
   </div>
-  <div class="formula-box">
-    $$\lambda_{\text{target}} = \frac{-\ln(\theta)}{W}$$
-  </div>
-  <div class="metrics" id="formulaOutputs"></div>
-  <p class="note">To find the flux that gives you this &lambda;: pilot at a candidate flux, measure
-  &lambda; directly (triggers ÷ beam-on time), and adjust up or down. Two or three short pilots
-  usually converge. See <a href="background.html">Model &amp; caveats</a> for the pileup effect that
-  puts a ceiling on how far you can push it, and the <a href="glossary.html">glossary</a> for any
-  term here that isn't clear.</p>
 </section>
 
 <section class="card">
-  <h2>Worked example: this campaign's device</h2>
-  <p>This campaign fitted a full pileup curve (&lambda; as a function of flux) from a 35-run flux
-  sweep. Most test campaigns won't have that luxury, so treat this as an illustration of the
-  procedure, not a general shortcut. Using the inputs above against this device's fitted response:</p>
-  <div class="metrics" id="exampleOutputs"></div>
-  <div id="qualityNote"></div>
-  <h3>How the target trades off against wall time</h3>
-  <p class="note">Loosening &theta; lets you push flux higher and finish faster. Tightening it does
-  the opposite. Neither direction is free. This is the tradeoff from
-  <a href="background.html">Model &amp; caveats</a> made concrete for your own inputs.</p>
-  <div class="table-wrap"><table>
-    <thead><tr><th>&theta;</th><th>Required &lambda;</th><th>Flux</th><th>Binding constraint</th><th>Wall time to &Phi;</th></tr></thead>
-    <tbody id="thetaSweepTable"></tbody>
+  <h2>The rule</h2>
+  <div class="formula-box">
+    $$\theta = e^{-\sigma_{\mathrm{cyc}}\,\phi\,W}
+    \qquad\Longrightarrow\qquad
+    \phi\,W = \frac{-\ln\theta}{\sigma_{\mathrm{cyc}}}$$
+  </div>
+  <p class="note">Every pair of flux and work-cycle time with the same product delivers the same
+  share of surviving cycles, so a tenfold higher flux is paid for by a tenfold shorter work cycle.
+  \(\phi W\) is the fluence one cycle receives.</p>
+  <div id="verdict"></div>
+  <div class="metrics" id="outputs"></div>
+</section>
+
+<section class="card">
+  <h2>How the target trades against time</h2>
+  <p class="note">Loosening \(\theta\) raises the flux the rule allows and shortens the run.
+  Tightening it does the reverse. Each row uses the inputs above.</p>
+  <div class="table-wrap"><table class="validation">
+    <thead><tr><th>\(\theta\)</th><th>\(\phi W\) (cm⁻²)</th><th>Flux for your \(W\)</th><th>Longest \(W\) at your flux</th><th>Time to \(\Phi\) at that flux</th></tr></thead>
+    <tbody id="sweep"></tbody>
   </table></div>
 </section>
 
 <section class="card">
-  <h2>Design levers, in order</h2>
-  <ul>
-    <li><strong>Flux, the primary lever.</strong> Chosen once, held fixed for the whole run. This
-    tool's formula is built around it.</li>
-    <li><strong>Batch size, optional and secondary.</strong> Only relevant if your test architecture
-    supports a tunable checkpoint interval. Refines throughput at a flux you've already chosen, and
-    does not change the flux decision.</li>
-    <li><strong>Storage medium, a real confirmed hardware effect.</strong> This campaign found
-    statistically significant heterogeneity across FRAM configurations (p=0.0001), tied to a
-    confirmed buffer-persistence mechanism that tracks storage medium (FRAM vs. SRAM), not clock
-    rate or batch size. Match flight configuration where affordable, and disclose any departure.
-    See <a href="validation.html">Campaign evidence</a>.</li>
-    <li><strong>Clock throttling, a real lever, not a free knob.</strong> Changes the compute-to
-    -telemetry ratio and the resulting work-cycle time, not just raw speed. A throttled build's
-    real cycle time can differ substantially from an unthrottled one at the same nominal clock
-    rate, which changes the &theta; a given flux actually delivers. See
-    <a href="background.html">Model &amp; caveats</a>.</li>
-  </ul>
-</section>
-
-<section class="card">
-  <h2>Campaign evidence</h2>
-  <div class="metrics" id="campaignMetrics"></div>
+  <h2>Which cross section to use</h2>
+  <p>Only a cross section counted from <em>lost cycles over in-cycle fluence</em> belongs in the
+  rule. A functional-interrupt cross section from a reset counter, or one from the host's recovery
+  record, counts over the full beam-on fluence, which credits exposure during windows in which no
+  cycle could be interrupted. Either will predict more surviving cycles than a test delivers, by an
+  amount that grows with how much time the device spends outside its work cycle. In the companion
+  campaign the host's record gave a rate about half the fitted one. See
+  <a href="background.html#validation">the evidence</a>.</p>
 </section>
 
 <section class="card">
   <h2>Where to go next</h2>
   <div class="next-links">
-    <a class="next-link" href="glossary.html"><b>Glossary →</b><span>Every term on this page, defined.</span></a>
-    <a class="next-link" href="background.html"><b>Model &amp; caveats →</b><span>The renewal-reward derivation, pileup, and why the two objectives above don't resolve without your &theta;.</span></a>
-    <a class="next-link" href="validation.html"><b>Campaign evidence →</b><span>Tier 1+2 counting, operational statistics, heterogeneity, and flux relationship.</span></a>
+    <a class="next-link" href="recovery.html"><b>With recovery time</b><span>Charge the test for the time a lost cycle costs, and check the flux against the pileup ceiling.</span></a>
+    <a class="next-link" href="background.html"><b>Model and evidence</b><span>The relation, the six-build measurement behind \(\sigma_{\mathrm{cyc}}\), and every quantity defined.</span></a>
   </div>
 </section>
+
 </main>
 
 <footer class="site-footer"><div class="wrap">
-  <p>Companion analysis for Hudson et al., "Design Strategies for Dynamic Single-Event Effect Testing of Algorithmic Computation." IU Center for Reliable and Trusted Electronics.</p>
+  <p>Companion to Hudson, Hunnicutt and Loveless, "Design Strategies for Dynamic Single-Event Effect Testing of Algorithmic Computation," IEEE Trans. Nucl. Sci. (RADECS 2026). IU Center for Reliable and Trusted Electronics.</p>
 </div></footer>
-<script src="assets/model.js?v=20260911"></script>
-<script src="assets/main.js?v=20260911"></script>
+
+<script src="assets/model.js?v=20260918"></script>
+<script src="assets/main.js?v=20260918"></script>
 </body>
 </html>

@@ -1,6 +1,6 @@
 # Update plan, 2026-09-18: aligning the site with manuscript v76
 
-**Status:** plan only, nothing implemented.
+**Status:** implemented 2026-09-18 (release v3). Decisions: sigma_cyc only, two tool pages (index, recovery), no correction factor, form-test work referred to the paper, evidence page rebuilt.
 **Author:** isahudso
 **Supersedes:** `UPDATE_PLAN_2026-09-11.md` for everything that plan left open. Its section 0
 (attribution table) and section 1 (terminology) still apply except where section 2 below

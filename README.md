@@ -1,113 +1,90 @@
-# Dynamic SEE Test Optimization
+# Dynamic SEE Test Design
 
-> **2026-09-11.** The model constants were corrected in this release. Versions before
-> `flux-primary-design-tool-v2-2026-09-11` computed with `W0 + ts = 32.222 ms`, the
-> contaminated work-cycle value the companion campaign audited and replaced on
-> 2026-09-05, so every flux, wall-clock time and batch size they produced was wrong.
-> See `UPDATE_PLAN_2026-09-11.md` for the full audit and the remaining work.
+Companion site for Hudson, Hunnicutt and Loveless, "Design Strategies for Dynamic
+Single-Event Effect Testing of Algorithmic Computation," IEEE Trans. Nucl. Sci. (RADECS 2026).
+A designer plugs in a lost-cycle cross section, a work-cycle time and a target share of
+surviving cycles, and reads off the flux to run or the longest cycle a flux allows. A second
+page charges the test for recovery time and bounds the flux by the dead time recovery imposes.
 
-Companion site for Hudson et al., "Design Strategies for Dynamic Single-Event Effect Testing
-of Algorithmic Computation" (RADECS 2026 / IEEE TNS). The site is a practical pre-campaign
-design tool: pick a flux by balancing clean-cycle coverage against time to reach a target
-fluence. Batch size is not a lever here. It does set the work cycle, through `W = W0 + B*ts`,
-but the companion paper does not present a throughput-optimal batch size, because the
-probability that a batch survives uninterrupted may itself decline with batch size.
+Built against manuscript package `TNS_REMEDIATION_2026-09-17-v76`. If the site and the paper
+disagree, the paper wins.
 
-## The formula
-
-Flux is the primary decision, chosen once and held fixed for the whole run. Work-cycle time
-`W` is treated as fixed and application-specific, not something the tool assumes you can tune.
-Pick a target clean-cycle fraction `theta` (probability a work cycle of length `W` completes
-without an interruption) and solve for the interruption rate that hits it:
+## The relation
 
 ```
-lambda_target = -ln(theta) / W
+theta = exp(-sigma_cyc * phi * W)          share of work cycles that survive
+phi * W = -ln(theta) / sigma_cyc           the same product for every pair on the rule
+D = theta W / (W + (1 - theta) tau)        duty factor; tau = 0 returns D = theta
+theta = D (W + tau) / (W + D tau)          inverted for a target D
+phi* <= 1 / (sigma_cyc tau_d)              counted rate peaks no higher than this
+W_min = -ln(theta) tau_d                   shortest cycle a target theta allows
 ```
 
-`theta` exists because the two natural objectives — crash-free coverage (wants low flux) and
-minimum time to a target fluence (wants high flux) — are monotonically opposed with no interior
-optimum; combining them without a quality target degenerates to "flux toward zero." Fixing
-`theta` turns that into a single well-posed answer: the highest flux consistent with your own
-quality bar, and the wall-clock time it implies (`T = fluence / flux`).
+The survival form is Young (1974) and Daly (2006); choosing flux from it is Zimmaro et al.
+(RADECS 2022). The direct count of surviving cycles across a 41-fold work-cycle range on heavy
+ions, the recovery charge, and the pileup bound are the companion paper's.
 
-To find the flux that gives you `lambda_target`: pilot at a candidate flux, measure `lambda`
-directly, and adjust up or down (2-3 short pilots usually converge). If you have a fitted
-pileup curve `lambda(phi) = k*phi*exp(-k*phi*tau)`, invert it directly instead — taking only
-the lower/rising-branch root; the upper root is spurious. If `theta` is looser than the
-interruption rate ever gets even at the pileup peak, your quality target was never the binding
-constraint — pileup fidelity is, and flux should be capped there instead.
+Only `sigma_cyc`, lost cycles over in-cycle fluence, belongs in the rule. A reset-counter or
+recovery-record cross section counts over full beam-on exposure and overstates the surviving
+share. The site does not apply a correction factor for that; it says to measure the right
+quantity instead.
 
-## Site structure
+## Pages
 
 | Page | Purpose |
 | --- | --- |
-| `index.html` | Pre-campaign design tool: flux-primary formula, worked example, theta-vs-wall-time tradeoff |
-| `glossary.html` | Every term used across the site, defined |
-| `unknown.html` | Prospective seven-gate Poisson reporting and pre-campaign checklist |
-| `background.html` | Flux-primary derivation, pileup explainer, rate hierarchy, why excluding recovery time does not fix the rate |
-| `validation.html` | Tier 1+2 counting census, operational statistics, recovery, heterogeneity |
+| `index.html` | Flux for a work cycle, or longest work cycle for a flux, from `sigma_cyc` and `theta` |
+| `recovery.html` | Duty factor and its inverse, the pileup ceiling, the shortest work cycle |
+| `background.html` | The relation with attribution, the six-build measurement, recovery and pileup evidence, Table III quantities, facility ranges, references |
 
 | Asset | Purpose |
 | --- | --- |
-| `assets/model.js` | Flux-primary formula, duty-factor extension, pileup model, per-build measured theta, sourced facility flux ranges, Garwood intervals |
-| `assets/main.js` | Index page rendering: live formula inputs, worked example, theta sweep table |
-| `assets/pilot.js` | Prospective seven-gate statistics UI |
+| `assets/model.js` | Constants and the six functions above; formatting helpers |
+| `assets/main.js` | First page rendering |
+| `assets/recovery.js` | Recovery page rendering |
 | `assets/style.css` | Shared presentation |
 
-The pages are plain HTML, CSS, and vanilla JavaScript. MathJax is loaded from a CDN for
-equation rendering; the source equations remain readable if the CDN is unavailable.
+Plain HTML, CSS and vanilla JavaScript. MathJax from a CDN renders the equations; the source
+equations stay readable without it.
 
-## Facility flux ranges
+## Key values (campaign, MSP430FR6989, LET 7.9 MeV cm^2/mg, flux ~5e4)
 
-Sourced for the achievable-range check on the pre-campaign tool. TAMU is excluded — the
-Cyclotron Institute's own materials and the National Academies' facility survey both describe
-energy/LET/ion-species range and beam-hours but no numeric flux ceiling.
+```
+sigma_cyc    = 1.564e-5 cm^2   [1.441e-5, 1.695e-5]; 0.78 s^-1 at 5e4
+             = 1.487e-5 cm^2   three pure-FRAM 16 MHz builds; 0.74 s^-1
+sigma_det*phi = 0.42 s^-1      host recovery record; lies above every measured point
+theta        = 0.51 to 0.98    588 of 20,459 cycles lost over six builds, W 20 to 814 ms
+longest W    = 285 ms          theta 0.80, phi 5e4
+tau          = 0.58 to 1.28 s  mean per lost cycle; settle 0.165 s for every build
+D            = 0.28 to 0.66    35 to 72% of test time bought no countable exposure
+tau_d        = 0.332 s         LET 2.3-4.1 group (fitted); 0.414 s at the comparison LET
+sigma_fit    = 1.16e-4 cm^2    fit parameter, R2 0.94; does not transfer across LET
+phi*         = 26,055          that group's peak; reset-counter refit 24,806
+ceiling      = 1.5 to 1.9e5    1/(sigma_cyc tau_d) at the comparison LET
+shortest W   = 74 to 92 ms     theta 0.80
+```
 
-| Facility | Heavy-ion flux (cm^-2 s^-1) |
-| --- | --- |
-| LBNL 88-Inch Cyclotron (BASE) | up to ~1e7 |
-| BNL Tandem Van de Graaff (SEU Test Facility) | 1e2 - 1e5 |
-| MSU NSCL K500/K1200 (SEETF) | 7.7e1 - 2.5e5 |
+Source of record: `~/Documents/RADECS-26/analysis/` (`k_direct_fit_v1.json`,
+`survival_measurement_v3.csv`, `duty_factor_v3.csv`, `pileup_numerator_robustness_v1.json`).
 
 ## Local verification
-
-Run the no-dependency model tests:
 
 ```bash
 node --test tests/model.test.js
 ```
 
-Start a local server:
-
 ```bash
 python3 -m http.server 8731
 ```
 
-Then inspect <http://localhost:8731> at desktop and narrow mobile widths. Browser QA must
-confirm that all five pages load without console errors, the theta slider on the pre-campaign
-tool updates the required-lambda and worked-example outputs live, all seven unchecked gates on
-the prospective-statistics page withhold numerical output, and an eligible zero shows only
-`2.995732273553991 / fluence`.
+Then check <http://localhost:8731> at desktop and 400 px widths: three pages load without
+console errors, the theta slider updates every output live, and the recovery page's verdict
+flips when the work cycle is shorter than the shortest-cycle output.
 
-## Zero-event convention
+## History
 
-- Eligible `n > 0`: `n / fluence` with an exact two-sided 95% Garwood interval.
-- Eligible `n = 0`: no point estimate and no two-sided interval; only the conventional
-  one-sided 95% upper limit `-ln(0.05) / fluence = 2.995732273553991 / fluence`.
-- Any failed gate, including no opportunity: all numerical fields remain blank.
-
-## Key numerical values
-
-```
-theta_default = 0.80         (clean-cycle-fraction default; a starting point, not a standard)
-fluence_default = 1e7        (ions cm^-2, common experimenter target)
-lambda_logged = 0.415918 s^-1  (pooled FRAM 16 MHz, read off the recovery log; BIASED LOW)
-lambda_fitted = 0.751298 s^-1  (same builds, fitted to measured clean-cycle fractions)
-optimism      = 1.625          (x1.63 [1.45, 1.85]; apply when lambda comes from a log)
-k             = 1.15653e-4 cm^2 (pileup, LET 2.3-4.1 group; only k is fitted)
-tau_d         = 0.33185 s      (pileup dead time; MEASURED, which is why recovery speed
-                                moves the ceiling)
-phi*          = 26056 cm^-2 s^-1 (pileup ceiling = 1/(k*tau_d))
-tau           = 0.58-1.28 s    (mean recovery cost per lost cycle, per build)
-phi*    = ~2.1e4 cm^-2 s^-1  (pileup onset / peak flux)
-```
+- `UPDATE_PLAN_2026-09-11.md`: the work-cycle correction and the removal of the batch-size
+  calculator (committed 2026-09-18 as the v2 release).
+- `UPDATE_PLAN_2026-09-18.md`: the alignment with package v76 that this release implements,
+  with the decisions taken: `sigma_cyc` only, two tool pages, no correction factor, form-test
+  work referred to the paper, evidence page rebuilt rather than patched.

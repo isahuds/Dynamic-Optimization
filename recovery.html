@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>With recovery time | Dynamic SEE Test Design</title>
+<meta name="description" content="Charge a dynamic SEE test for the time it spends recovering, and check the chosen flux against the pileup ceiling that recovery dead time sets.">
+<link rel="stylesheet" href="assets/style.css?v=20260918">
+<script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['$$','$$']]},options:{skipHtmlTags:['script','noscript','style','textarea','pre']}};</script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+<header class="site-header"><div class="wrap">
+  <h1>Dynamic SEE Test Design</h1>
+  <p class="tagline">Charge the test for recovery time, and bound the flux by the dead time that recovery imposes.</p>
+</div></header>
+<nav class="site-nav"><ul>
+  <li><a href="index.html">Flux and work cycle</a></li>
+  <li><a href="recovery.html" class="active">With recovery time</a></li>
+  <li><a href="background.html">Model and evidence</a></li>
+</ul></nav>
+
+<main class="wrap">
+
+<section class="card intro">
+  <h2>What this page adds</h2>
+  <p>The <a href="index.html">first page</a> asks how many attempted cycles come back clean. This
+  page asks how much of the time you book turns into countable exposure, and it needs two more
+  numbers a pilot can supply: the mean time a lost cycle costs the test, \(\tau\), and the dead
+  time after a single interrupt, \(\tau_d\). The first sets the duty factor. The second sets a
+  flux ceiling, and with it the shortest work cycle a target \(\theta\) allows.</p>
+  <p class="note">Setting \(\tau=0\) returns the first page's answer exactly, so this is an
+  extension of the published relation, not a competitor. Both extensions are the companion paper's.</p>
+</section>
+
+<section class="card">
+  <h2>Inputs</h2>
+  <div class="grid">
+    <div class="field">
+      <label for="inputSigma">Lost-cycle cross section \(\sigma_{\mathrm{cyc}}\)</label>
+      <div class="inputrow"><input id="inputSigma" type="text" inputmode="decimal" value="1.564e-5"><span class="unit">cm²</span></div>
+      <p class="help">As on the first page. Campaign value prefilled.</p>
+    </div>
+    <div class="field">
+      <label for="inputW">Work-cycle time \(W\)</label>
+      <div class="inputrow"><input id="inputW" type="text" inputmode="decimal" value="200"><span class="unit">ms</span></div>
+      <p class="help">Event-free, beam off.</p>
+    </div>
+    <div class="field">
+      <label for="inputTau">Recovery time per lost cycle \(\tau\)</label>
+      <div class="inputrow"><input id="inputTau" type="text" inputmode="decimal" value="0.6"><span class="unit">s</span></div>
+      <p class="help">The <strong>mean</strong> from interruption to the resumption of work, including
+      retries and any host timeout, not the median settle. The campaign measured 0.58 to 1.28 s
+      per lost cycle against a 0.165 s settle.</p>
+    </div>
+    <div class="field">
+      <label for="inputTauD">Dead time after one interrupt \(\tau_d\)</label>
+      <div class="inputrow"><input id="inputTauD" type="text" inputmode="decimal" value="0.33"><span class="unit">s</span></div>
+      <p class="help">The window after a single strike during which a second one is not counted.
+      One lost cycle may carry several. The campaign measured 0.33 to 0.41 s.</p>
+    </div>
+    <div class="field">
+      <label for="inputD">Target duty factor \(D\) (optional)</label>
+      <div class="inputrow"><input id="inputD" type="text" inputmode="decimal" value="" placeholder="e.g. 0.6"><span class="unit">0 to 1</span></div>
+      <p class="help">Leave blank to work from \(\theta\). Fill it to get the \(\theta\) and flux that
+      deliver this share of countable time.</p>
+    </div>
+    <div class="field">
+      <label for="inputFluence">Target fluence \(\Phi\)</label>
+      <div class="inputrow"><input id="inputFluence" type="text" inputmode="decimal" value="1e7"><span class="unit">ions cm⁻²</span></div>
+    </div>
+    <div class="field wide">
+      <label for="inputTheta">Target clean-cycle fraction \(\theta\) = <span id="thetaValue">80</span> %</label>
+      <input id="inputTheta" type="range" min="50" max="99" step="1" value="80">
+    </div>
+  </div>
+</section>
+
+<section class="card">
+  <h2>Duty factor</h2>
+  <div class="formula-box">
+    $$D=\frac{\theta W}{W+(1-\theta)\tau}
+    \qquad
+    \theta=\frac{D\,(W+\tau)}{W+D\,\tau}$$
+  </div>
+  <p class="note">\(D\) is the share of in-cycle plus recovery time that yields countable exposure,
+  meaning fluence delivered during cycles that survive to report. The charge a test pays is
+  \((1-\theta)\tau/W\). Once \(\theta\) comes from the rule on the first page, \(W\) cancels out of
+  that charge and it is left to \(\tau\): a build already keeping most of its cycles gains more from
+  recovering reliably than from shortening the cycle it runs.</p>
+  <div id="dutyVerdict"></div>
+  <div class="metrics" id="dutyOutputs"></div>
+</section>
+
+<section class="card">
+  <h2>Pileup ceiling and shortest cycle</h2>
+  <div class="formula-box">
+    $$\phi^{*}\le\frac{1}{\sigma_{\mathrm{cyc}}\,\tau_d}
+    \qquad
+    W_{\min}=-\ln\theta\;\tau_d$$
+  </div>
+  <p class="note">While the device is recovering, a second strike opens no second count, so the
+  counted rate rises with flux, peaks, and falls. Past the peak more beam returns fewer counts. The
+  direct count bounds the strike rate from below and pileup can only suppress a counted rate, so the
+  peak sits no higher than \(1/(\sigma_{\mathrm{cyc}}\tau_d)\). A flux the test cannot exceed also
+  sets a shortest work cycle it can run, in which the cross section cancels.</p>
+  <div id="ceilingVerdict"></div>
+  <div class="metrics" id="ceilingOutputs"></div>
+</section>
+
+<section class="card">
+  <h2>What the campaign measured</h2>
+  <p class="note">Six builds at one flux and LET. The two that keep the most cycles are not the two
+  that keep the most test time, because their recovery is slower. Between 35% and 72% of test time
+  bought no countable exposure, depending on the build.</p>
+  <div class="table-wrap"><table class="validation">
+    <thead><tr><th>Build</th><th>\(W\)</th><th>\(\theta\) measured</th><th>\(\tau\) (s)</th><th>\(D\)</th><th>Rank by \(\theta\)</th><th>Rank by \(D\)</th></tr></thead>
+    <tbody id="campaignTable"></tbody>
+  </table></div>
+  <p class="help">Every build recovered in the same 0.165 s when the automatic path worked. What
+  differs is the tail: an episode that fails to resynchronize costs a fixed host timeout of five or
+  ten seconds. Five of the six builds share one failure rate near 4%; SRAM_B1 is the exception at
+  16%. The slowest twentieth of episodes carries between a quarter and seven tenths of each build's
+  recovery time, so failing less often, or waiting less when it fails, is a larger lever than the
+  settle.</p>
+</section>
+
+<section class="card">
+  <h2>Where to go next</h2>
+  <div class="next-links">
+    <a class="next-link" href="index.html"><b>Flux and work cycle</b><span>The rule without recovery, and the fluence-per-cycle reading of it.</span></a>
+    <a class="next-link" href="background.html#recovery"><b>Model and evidence</b><span>Why the order of the builds reverses, and the pileup measurement behind the ceiling.</span></a>
+  </div>
+</section>
+
+</main>
+
+<footer class="site-footer"><div class="wrap">
+  <p>Companion to Hudson, Hunnicutt and Loveless, "Design Strategies for Dynamic Single-Event Effect Testing of Algorithmic Computation," IEEE Trans. Nucl. Sci. (RADECS 2026). IU Center for Reliable and Trusted Electronics.</p>
+</div></footer>
+
+<script src="assets/model.js?v=20260918"></script>
+<script src="assets/recovery.js?v=20260918"></script>
+</body>
+</html>
