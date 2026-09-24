@@ -28,14 +28,16 @@
     if (!Object.keys(ok).every(function (k) { return ok[k]; })) return;
 
     var D = S.dutyFactor(theta, W, tau);
+    var Dlat = S.dutyFactor(theta, W, tau + tDet);
     var charge = S.recoveryCharge(theta, W, tau);
     var flux = S.fluxForW(theta, sigma, W);
     var dutyHtml =
-      S.metric("Duty factor at your θ", D.toFixed(3), "", "share of in-cycle plus recovery time that counts", true) +
+      S.metric("Duty factor at your θ", D.toFixed(3), "", "recovery charged, as the paper defines D", true) +
+      S.metric("With detection latency charged", Dlat.toFixed(3), "", "τ + " + tDet + " s per lost cycle; closer to what beam-on time returns", true) +
       S.metric("Cycle and recovery time buying no exposure", pct(1 - D), "", "1 − D; beam-on time also holds the detection wait and re-runs") +
-      S.metric("Recovery charge (1−θ)τ/W", charge.toFixed(3), "", charge > 0.5 ? "about as long recovering as computing" : "recovery per cycle attempted, in cycle lengths") +
+      S.metric("Recovery charge (1−θ)τ/W", charge.toFixed(3), "", charge > 0.5 ? "about as long recovering as running cycles" : "recovery per cycle attempted, in cycle lengths") +
       S.metric("Flux for your W at θ", S.sci(flux), " cm⁻² s⁻¹", "from the first page's rule") +
-      S.metric("Time to Φ, beam on", S.dur(S.wallClockTime(flux, fluence)), "", "at most " + pct(D) + " of it countable, since D charges recovery alone");
+      S.metric("Time to Φ, beam on", S.dur(S.wallClockTime(flux, fluence)), "", "at most " + pct(D) + " of cycle and recovery time countable");
     var dutyVerdict = "";
     if (Dtarget !== null) {
       var thetaNeeded = S.thetaForDuty(Dtarget, W, tau);
@@ -47,25 +49,19 @@
         dutyHtml += S.metric("θ needed for D = " + Dtarget, pct(thetaNeeded), "", "then the rule gives", true) +
           S.metric("Flux for that θ", S.sci(fluxNeeded), " cm⁻² s⁻¹", "at W = " + S.dur(W));
         dutyVerdict = S.warnBox("Target duty factor set.",
-          " To keep " + pct(Dtarget) + " of in-cycle plus recovery time countable at τ = " + tau + " s you need " + pct(thetaNeeded) +
+          " To keep " + pct(Dtarget) + " of the time running cycles and recovering countable at τ = " + tau + " s you need " + pct(thetaNeeded) +
           " of cycles to survive, which at your σ and W means running no more than " + S.sci(fluxNeeded) + " cm⁻² s⁻¹.");
       }
     }
     document.getElementById("dutyVerdict").innerHTML = dutyVerdict;
     document.getElementById("dutyOutputs").innerHTML = dutyHtml;
 
-    var hidden = S.hiddenShare(S.SIGMA_FI.pooled, flux, tDet);
-    document.getElementById("hiddenOutputs").innerHTML =
-      S.metric("Hidden share at your flux", pct(hidden), "", "1 − exp(−σ_FI φ t_det), an expectation, not a fit", true) +
-      S.metric("σ_FI used", S.sci(S.SIGMA_FI.pooled, 2), " cm²", "pooled across five directly comparable builds") +
-      S.metric("Flux used", S.sci(flux), " cm⁻² s⁻¹", "from the rule above at your θ and W");
   }
 
   document.addEventListener("DOMContentLoaded", function () {
     ["inputSigma", "inputW", "inputTau", "inputTDet", "inputD", "inputFluence", "inputTheta"].forEach(function (id) {
       document.getElementById(id).addEventListener("input", render);
     });
-    document.getElementById("detectionTable").innerHTML = S.detectionRows();
     document.getElementById("timeBudgetTable").innerHTML = S.timeBudgetRows();
     campaignTable();
     render();

@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Model and evidence | Dynamic SEE Test Design</title>
-<meta name="description" content="The flux-selection relation, the heavy-ion measurement that tests it, the recovery and hidden-interrupt extensions, and every quantity defined.">
-<link rel="stylesheet" href="assets/style.css?v=20260922-v81">
+<meta name="description" content="The flux-selection relation, the heavy-ion measurement that tests it, the recovery extension, a caution on hidden strikes, and every quantity defined.">
+<link rel="stylesheet" href="assets/style.css?v=20260924-refs">
 <script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['$$','$$']]},options:{skipHtmlTags:['script','noscript','style','textarea','pre']}};</script>
 <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 </head>
@@ -34,11 +34,23 @@
   fluence one cycle receives, so a cycle survives or not according to the exposure it accumulates
   while it runs. Writing the exponent this way holds the cross section constant in flux, which is the
   case while each strike acts on its own.</p>
-  <p>The published method was developed for system-level proton and mixed-field testing, where the
-  work cycle was fixed by the application and the survival term was computed from a measured
-  cross section rather than counted. The companion paper varies the work cycle 41-fold on heavy ions
-  at component level, counts the surviving cycles directly, and charges the recovery time. Those
-  three things, and the limit on a counted interrupt rate below, are what it adds.</p>
+  <p>Zimmaro et al. developed the method for system-level proton and mixed-field testing, choosing
+  flux to maximize the chance of observing a low-probability failure before a dominant one
+  interrupts the work cycle, in systems whose application sets that cycle. The companion paper
+  builds on it in three directions. It varies the work cycle deliberately, from 20 to 814 ms, on
+  heavy ions at component level. It counts the surviving cycles directly. And it charges the test
+  for the time it spends recovering.</p>
+  <p>The relation sits alongside established flux guidance, which bounds flux to keep a measurement
+  free of artifacts (Buchner et al. 2002; Berg et al. 2009; Quinn 2014) or to avoid overwhelming
+  error-correction logic (Zoutendyk et al. 1987; Allen et al. 2010, 2011). ESCC 25100 asks that
+  functional interrupts be characterized in all of a device's operating conditions, that the share of
+  test time in which a fault could be detected be measured and applied to the cross section, and that
+  flux keep the remaining dead time under 20% of that share. The work a device completes between
+  interrupts has been reported as a mean work to SEFI, used to compare processor configurations
+  (Esquer et al. 2022, 2024), following the mean workload between failures introduced for GPU
+  reliability (Rech et al. 2014). Bohman et al. (2019) showed the same tradeoff on the MSP430FR5969:
+  software redundancy lowered the program-error cross section by a factor of 17 to 29, and because it
+  also slowed execution, the work completed between failures rose by a factor of 4 to 7.</p>
 </section>
 
 <section class="card" id="validation">
@@ -46,8 +58,9 @@
   <p>Six firmware builds of an FIR filter ran on the MSP430FR6989 at a flux held within 11% of
   \(5\times10^{4}\) cm⁻² s⁻¹ and one LET (7.9 MeV·cm²/mg), with the work cycle set by batch size
   and clock choice from 20 ms to 814 ms. A lost cycle is one in which a host-detected interrupt
-  occurred, whatever the cycle returned. Of 20,459 cycles attempted, 588 were lost. The fraction
-  that survived uses neither \(\sigma_{\mathrm{cyc}}\) nor \(W\), so comparing it against the
+  occurred, whatever the cycle returned, counted once however many detections it carried. Of 20,459
+  cycles attempted, 588 were lost against 787 host detections, the excess being repeat episodes on
+  cycles already lost. The fraction that survived uses neither \(\sigma_{\mathrm{cyc}}\) nor \(W\), so comparing it against the
   relation tests the formula rather than restating it.</p>
   <div class="table-wrap"><table class="validation">
     <thead><tr><th>Build</th><th>\(W\)</th><th>Attempted</th><th>Lost</th><th>\(\theta\) measured [95%]</th><th>\(\theta\) from the fit</th></tr></thead>
@@ -55,30 +68,38 @@
   </table></div>
   <div class="metrics" id="fitMetrics"></div>
   <p>A fit on the counted fractions, taking each build at its own flux and work-cycle time, gives
-  one cross section shared across all six, and it carries across the whole range. Fitted to the
-  three pure-FRAM 16 MHz builds alone, where storage and clock are fixed while \(W\) still spans the
-  full range, it gives \(1.49\times10^{-5}\) cm².</p>
+  one cross section shared across all six, and it carries across the whole range. Because the
+  exponent scales with \(\phi W\), pushing flux costs the long-cycle builds far more than the
+  short: at \(2\times10^{5}\) cm⁻² s⁻¹ the same fit puts the longest cycle at 8% surviving, while
+  the shortest still returns 94%.</p>
+  <img class="fig" src="assets/img/survival_measurement_fluxfamily.png" alt="Measured clean-cycle fraction against work-cycle time for six builds, with the survival curve drawn at five fluxes from 1e4 to 2e5">
+  <p class="help">The companion paper's Fig. 4. Points are direct counts with exact 95% binomial
+  intervals, taken at the matched flux. Every curve uses the single fitted \(\sigma_{\mathrm{cyc}}\)
+  and no other parameter. Where a curve crosses a target \(\theta\), its \(W\) is that flux's
+  longest usable work cycle, 135 ms at the matched flux for \(\theta=0.90\).</p>
   <h3>Two assumptions, tested</h3>
-  <p>The fit rests on two assumptions, and both were tested against the direct count rather than
-  taken on faith. The first is that one cross section serves every build. Giving each build its own
+  <p>The fit rests on two assumptions, and the direct count tests both. The first is that one cross section serves every build. Giving each build its own
   value describes the counts no better than the shared one, by a likelihood ratio of G² = 6.4 on 5
   degrees of freedom and p = 0.27, and the same holds within the three pure-FRAM 16 MHz builds,
   where only \(W\) moves and p = 0.56. The second is that a cycle's risk of interruption stays
   constant while it runs. A free-shape Weibull survival law returns a shape β = 0.98, with a 95%
   interval of 0.92 to 1.04, and the pure-FRAM builds alone give the same 0.98 (0.90 to 1.06). The
-  constant-risk form above is the case β = 1. A long work cycle therefore faces the same risk per
-  unit fluence as a short one, with no added risk from its length. A build with a longer cycle loses
-  a larger share only because each cycle receives more fluence, and that agreement across a 41-fold
-  range of \(W\) is what lets \(\sigma_{\mathrm{cyc}}\) measured at one work cycle carry to
-  another.</p>
+  constant-risk form above is the case β = 1. The agreement across \(W\) from 20 to 814 ms is
+  therefore evidence for the form rather than a failure to reject it, and it is what lets
+  \(\sigma_{\mathrm{cyc}}\) measured at one work cycle carry to another.</p>
+  <p>Retried executions are dropped from the counted cycles and from the exposure they scale. They
+  carry 1 to 2% of beam-on time at \(B=1\) and 29 to 30% at \(B=200\). The lost-cycle count and its
+  exposure drop the same executions, so \(\sigma_{\mathrm{cyc}}\) is not biased by the exclusion,
+  but counting retries as attempts instead would raise it by 9%.</p>
   <h3>Which cross section feeds the relation</h3>
   <p>The campaign produced three candidates. \(\sigma_{\mathrm{cyc}}\) counts lost cycles over the
   fluence delivered while a cycle was running. The functional-interrupt cross section from the
   device's reset counter, \(\sigma_{\mathrm{FI}}\), and the one from the host's recovery record,
   \(\sigma_{\mathrm{det}}\), count over the full beam-on fluence. Both give higher counts and higher
   exposures, and the second effect wins: beam-on fluence credits exposure during windows in which
-  no work cycle could be interrupted. The host's record gives a rate of 0.42 s⁻¹ at the matched flux
-  against the fitted 0.78 s⁻¹, and the curve it implies lies above every measured point. Both beam-on
+  no work cycle could be interrupted. The host's record gives
+  \(\sigma_{\mathrm{det}}=8.3\times10^{-6}\) cm², a rate of 0.42 s⁻¹ at the matched flux against
+  the fitted 0.78 s⁻¹, and predicts a higher surviving share than every build measured. Both beam-on
   cross sections describe the device's response accurately, but either one overstates the surviving
   share, because its exposure includes the time outside attempted work cycles spent handling
   interrupts. In this campaign only 24 to 43% of beam-on time in a call fell within work cycles, and
@@ -88,72 +109,115 @@
 
 <section class="card" id="comparison">
   <h2>Firmware comparison and the storage signature</h2>
-  <p>At the reference LET and flux, the corruption-event cross section spread 9.5-fold across the
-  six builds, from \(1.1\times10^{-6}\) to \(1.0\times10^{-5}\) cm². A corruption event can only be
+  <p>A microcontroller's single-event sensitivity depends on which internal hardware blocks the
+  running code exercises (Koga et al. 1997; Nekrasov et al. 2015; Houssany et al. 2021; Esquer et al.
+  2022; Noizette et al. 2023). A test program that exercises only the programmer-visible registers
+  can overstate a processor's upset rate by up to an order of magnitude against application-like
+  code (Velazco et al. 1992), and test-as-you-fly procedures address this with representative
+  programming and inputs (Quinn 2014; Quinn et al. 2021). The companion campaign varied the firmware
+  to see how far the choice moves each rate.</p>
+  <p>At the reference LET and flux, the corruption-event cross section ranged from
+  \(1.09\times10^{-6}\) to \(1.04\times10^{-5}\) cm² across the six builds, a factor of 9.5. A
+  corruption event can only be
   read off a delivered result, so its rate divides by the fluence delivered during the work cycles
   that returned one: in-cycle exposure scaled by the clean-cycle fraction \(\theta\). Crediting
   exposure from cycles that never delivered a result would shrink the cross section most for the
   builds that lose the most. SRAM_Mixed_B200 returns the highest rate and SRAM_B1 the second, level
-  with FRAM_B1_Throttled. The three builds on that device return the three highest rates, so every
-  contrast between the two groups is also a contrast between devices.</p>
+  with FRAM_B1_Throttled. The three builds that ran on device B return the three highest rates, so
+  the split between high and low rates is also a split between devices.</p>
   <p>The functional-interrupt cross section, counted from each device's own reset counter over
-  beam-on exposure and comparable on five of the six builds, spread only 1.4-fold, from \(7.7\) to
-  \(11.1\times10^{-6}\) cm², with a count-weighted pooled rate
-  \(\sigma_{\mathrm{FI}}=9.4\times10^{-6}\) cm². It sits three- to eightfold above the corruption
-  rate in four of those five builds, and level with it in SRAM_Mixed_B200. The device stops
-  delivering results at nearly the same rate whichever firmware it runs, while what corrupts a
-  result depends far more on the firmware.</p>
+  beam-on exposure and comparable on five of the six builds, ranged only from \(7.7\) to
+  \(11.1\times10^{-6}\) cm², a factor of 1.4, with a count-weighted pooled rate
+  \(\sigma_{\mathrm{FI}}=9.4\times10^{-6}\) cm². The reset count runs 1.17 to 1.44 times the
+  host-detected count, depending on the build. A test for one shared rate across the five rejects it
+  (χ² = 12.3 on 4 degrees of freedom, p = 0.016), with FRAM_B50 and SRAM_Mixed_B200 carrying 83% of
+  the statistic. That rejection depends on how multi-reset gaps are credited: crediting each such gap
+  once leaves the five consistent with one rate (p = 0.64) and narrows the spread from 1.4 to 1.2.
+  Either way the spread is small against the corruption spread. The device stops delivering results
+  at nearly the same rate whichever firmware it runs, while what corrupts a result depends far more
+  on the firmware.</p>
   <img class="fig fig-narrow" src="assets/img/firmware_cross_sections_scatter_v18.png" alt="Functional-interrupt and corruption-event cross sections for six firmware builds at LET 7.9 and matched flux">
   <p class="help">The companion paper's Fig. 2, at surface LET 7.9 MeV·cm²/mg and matched flux (4.6
   to 5.1×10⁴ cm⁻² s⁻¹). Circles are the functional-interrupt cross section from the device's own
   reset counter, over beam-on exposure. Squares are the corruption-event cross section, over
   exposure to clean work cycles. SRAM_B1's counter could not be reconstructed, so its interrupt
-  point is drawn hollow and left out of the pooled band. Error bars are 95% exact intervals.</p>
-  <p>Storage placement is the leading contributor to the larger spread. The one build that slows
+  point is the open diamond with an asterisk and is left out of the pooled band. Error bars are 95%
+  exact intervals.</p>
+  <p>Storage placement is the leading candidate for the larger spread. The one build that slows
   its clock during computation also sits above the three pure-FRAM 16 MHz builds (χ² = 18.7 on 3
-  degrees of freedom, p &lt; 0.001), but it shares a device with both SRAM builds, so this campaign
-  cannot separate the clock from the device. Batch size alone showed no detectable effect across
+  degrees of freedom, p &lt; 0.001, 65% of it from that build), but it shares a device with both
+  SRAM builds, so this campaign cannot separate the clock from the device. Batch size alone showed no detectable effect across
   those three builds (χ² = 0.6 on 2 degrees of freedom, p = 0.73), in a test with little power.</p>
-  <p>A single-bit-flip test locates the fault site behind each corruption event. Of the 34 events in
+  <p>A single-bit-flip test, in the manner of fault-injection studies (Quinn et al. 2013), locates
+  the fault site behind each corruption event. Of the 34 events in
   the two SRAM builds, 16 are reproduced by a single flip in an input sample, against 1 of the 36
   events of FRAM_B1_Throttled on the same device, so the signature tracks storage rather than the
-  device (Fisher exact, \(p<10^{-4}\)). No single flip reproduces 84% of the 61 FRAM events, against
-  26% of the SRAM events, and 30 of the 35 matches found sit at a stored sample rather than in the
-  arithmetic, 24 of them in the SRAM builds.</p>
-  <img class="fig" src="assets/img/fault_site_composition_v1.png" alt="Fault site of each corruption event, by firmware build and device">
-  <p class="help">The companion paper's Fig. 3. Each bar is one build's corruption events, shaded by
-  the site at which a single bit flip reproduces each one, lightest where no single flip does. The
-  colored key beside each build matches its color in the paper's other figures.</p>
+  device (Fisher exact, \(p<10^{-4}\)). Of the 61 events in the FRAM builds, 84% are not reproduced
+  by any simulated flip, against 26% of the SRAM events, and 30 of the 35 events that are reproduced
+  sit at a stored sample rather than in the arithmetic.</p>
+  <p>This agrees with what is known of FRAM. Moving working data into FRAM has been reported to
+  eliminate the observed software failures on a related MSP430 (Quinn et al. 2014). On standalone
+  FRAM parts, single-event effects are located in the peripheral circuitry rather than in the cell
+  array (Bosser et al. 2018; Ju et al. 2022), and under pulsed dose rate and neutrons a standalone
+  FRAM failed reproducibly only while actively read and written (Harris et al. 2024). The storage and
+  batch-size findings are properties of the firmware, the same dependence on program behavior
+  reported for other processor benchmarks (Quinn 2014; Quinn et al. 2015; Stirk et al. 2023).</p>
+  <img class="fig" src="assets/img/fault_site_composition_v2.png" alt="Fault site of each corruption event, by firmware build and device">
+  <p class="help">The companion paper's Fig. 3. Each bar is one build's corruption events. An event
+  takes the site at which a simulated single flip reproduces its first corrupted output, and no flip
+  at the five simulated sites reproduces the events in the lightest segment. The colored key beside
+  each build matches its color in the paper's other figures.</p>
 </section>
 
 <section class="card" id="recovery">
   <h2>Recovery time in the flux choice</h2>
-  <p>Charged for recovery time alone, the builds lost 34% to 72% of their in-cycle and recovery time
-  to exposure they could not count, depending on the build. Let \(\tau\) be the mean recovery time
-  per lost cycle. The duty factor is the surviving cycle time over the sum of cycle time and the
+  <p>The clean-cycle fraction counts only in-cycle time, but each lost cycle also costs a recovery,
+  during which no work cycle runs and the device is unobservable. Let \(\tau\) be the mean recovery
+  time per lost cycle. The duty factor, the share of the time spent running cycles and recovering
+  that yields countable exposure, is the surviving cycle time over the sum of cycle time and the
   recovery expected per cycle:</p>
   <div class="formula-box">$$D=\frac{\theta W}{W+(1-\theta)\tau}\qquad\qquad \theta=\frac{D\,(W+\tau)}{W+D\,\tau}$$</div>
-  <p>Setting \(\tau=0\) returns \(D=\theta\), so this extends the published relation rather than
-  replacing it. \(D\) is the test-time counterpart of the availability that system-level guidance
+  <p>Setting \(\tau=0\) returns \(D=\theta\), so the duty factor builds directly on the published
+  relation. \(D\) is the test-time counterpart of the availability that system-level guidance
   computes for a mission from downtime and cross section (Coronetti et al., TNS 2021). ESCC 25100
   asks that a comparable active-time share be measured and applied to a cross section.</p>
+  <p>How large \(\tau\) is depends on the device class. Many microcontrollers that boot from on-chip
+  non-volatile memory reset themselves in milliseconds when an internal reset path is available
+  (Quinn et al. 2014; Texas Instruments 2019; Zimmaro et al., TNS 2022), while systems-on-chip that run
+  Linux are recovered by a host-commanded reboot or power cycle taking tens of seconds to minutes
+  (Esquer et al. 2024; Frías-Domínguez et al. 2025).</p>
+  <p>Charged with each build's own \(\theta\) and \(\tau\), 34 to 72% of the time spent running
+  cycles and recovering yielded no countable exposure, depending on the build.</p>
   <p>The charge a build pays is \((1-\theta)\tau/W\). A short cycle carries a high ratio of
   recovery time to cycle time, but it also loses a correspondingly smaller share of its cycles, and
-  the two effects cancel: with \(1-\theta\) rising in proportion to \(W\), the work-cycle time drops
-  out and the charge is left to \(\tau\). FRAM_B1 runs a 20 ms cycle and takes 1.17 s to recover
-  from a loss, about sixty cycle-lengths, but loses only 1.6% of its cycles, and 1.6% of sixty is
-  close to one, so it spends about as long recovering as computing. Its clean-cycle fraction is 0.98
-  and its duty factor 0.51. The two builds that keep the most cycles rank third and fourth on duty
-  factor. Counting only the cycle time that returned a clean result, against beam-on time,
-  reproduces that order with no model involved.</p>
+  the two effects cancel to first order. While few cycles are lost, \(1-\theta\) rises nearly in
+  proportion to \(W\), so the work-cycle time drops out and the charge is left to \(\tau\). FRAM_B1
+  runs a 20 ms cycle and takes 1.17 s to recover from a loss, about sixty cycle-lengths, but loses
+  only 1.6% of its cycles, and 1.6% of sixty is close to one, so it spends about as long recovering
+  as running cycles. Its clean-cycle fraction is 0.98 while its duty factor is only 0.51. A build with
+  forty times the work cycle and the same recovery time would pay about 75% of that charge at this
+  flux.</p>
+  <p>The two builds that keep the most cycles, FRAM_B1 and SRAM_B1, rank third and fourth on duty
+  factor. Each takes about twice as long to recover from a lost cycle, 1.17 and 1.26 s, as the two
+  builds that pass them, 0.58 and 0.59 s. The directly measured countable share reproduces that same
+  order with no model involved.</p>
   <p>\(\tau\) is measured, as the mean episode duration times the episodes a lost cycle carried,
   and runs 0.58 to 1.28 s here. Every build settled in the same 0.165 s when the automatic path
-  worked; the cost lives in the tail, where a failed resynchronization costs a host timeout of five
-  or ten seconds. Automatic recovery restored function in 95.3% of cases scored on delivered work,
-  manual recovery in 96.4%, indistinguishable; scoring every censored case as a failure gives 71.4%.
-  A campaign that pauses the beam to recover does not escape the charge, since \(\tau\) then moves
-  from its beam-on budget to its facility budget: an escalated recovery cost a mean of 93.7 s
-  against a median pause of 84.6 s.</p>
+  worked, so \(\tau\) is set by the tail of episodes that failed to resynchronize. Each failure cost
+  a fixed timeout of five or ten seconds, the time of thirty to sixty successful recoveries. Five of
+  the six builds share one failure rate near 4%. SRAM_B1 failed in 16% of episodes, and
+  SRAM_Mixed_B200 carried 2.5 episodes per lost cycle against at most 1.6 elsewhere. The campaign
+  cannot separate either build from its documented counter corruption as the cause. The slowest 5%
+  of episodes carry 23 to 69% of each build's recovery time, so reducing how often recovery fails,
+  or how long the host waits when it does, is a larger lever than the settle.</p>
+  <p>Scored against the next work cycle the device delivered, automatic recovery restored function
+  in 95.3% of cases and a manual reset in 96.4%, a difference of one point with a 95% interval of −5
+  to +3 points. The automatic path kept the beam on. For the build swept across LET, pausing the
+  beam at every detection for the median 84.6 s manual reset would have delivered
+  \(1.45\times10^{7}\) cm⁻² instead of the \(2.56\times10^{8}\) cm⁻² actually accumulated, a factor
+  of 18 less exposure. A campaign that pauses the beam to recover does not escape the charge, since
+  \(\tau\) then moves from its beam-on budget to its facility budget: an escalated recovery cost a
+  mean of 93.7 s against that median of 84.6 s.</p>
   <h3>Where the rest of the beam-on time went</h3>
   <p>Recovery is not the only time a call spends outside its work cycles. Share of beam-on time in a
   call, across the six builds:</p>
@@ -165,54 +229,36 @@
   \(D\) charges recovery alone, so it is an upper bound on the countable share. Measured directly,
   as the time in cycles that returned a clean result over beam-on time in a call, that share is 12
   to 42%, below \(D\) for every build, because \(D\) charges neither the host's wait to detect an
-  interrupt nor the re-running of cut-short cycles. Adding the measured wait, 0.7 to 1.1 s per lost
-  cycle, to \(\tau\) brings \(D\) within 0.02 to 0.05 of the measured share at \(B\le50\), for
-  example 0.39 against 0.37 for FRAM_B1. Measured this way, 58 to 88% of beam-on time in a call
-  produced no countable exposure.</p>
+  interrupt nor the re-running of cut-short cycles. Adding the measured detection latency, 0.7 to
+  1.1 s per lost cycle, to \(\tau\) brings \(D\) within 0.02 to 0.05 of the measured share at
+  \(B\le50\), for example 0.39 against 0.37 for FRAM_B1.</p>
 </section>
 
 <section class="card" id="pileup">
-  <h2>Hidden interrupts and the limit of a counted rate</h2>
-  <p>While the host is inside a recovery episode it is waiting on the device rather than watching
-  for new faults. A strike that lands after one interrupt, but before the host has resynchronized,
-  resets the device again without opening a new recovery episode, so it is never counted. This is
-  the counting loss known from radiation detectors (Knoll). A 3.76-fold fall in a counted cross
-  section over a 10.5-fold rise in flux has been measured this way on a system recovered by an
-  external watchdog (Zimmaro et al.).</p>
-  <p class="help">The recovery page estimates the share of interrupts that hide an independent strike, for a
-  detection window \(t_{\mathrm{det}}\), with the expression below. It is a plain expectation for
-  independent strikes, not a fit to these data.</p>
-  <div class="formula-box">$$\text{hidden share}=1-e^{-\sigma_{\mathrm{FI}}\,\phi\,t_{\mathrm{det}}}$$</div>
-  <p>The device's own reset counter records these hidden resets, but it also credits repeated
-  resets after a single event, so its 17 to 44% excess over the host's count is not all hidden
-  strikes. The two can be told apart by rate, since the firmware cannot reset itself and only
-  independent strikes become more frequent as flux rises. In 1,856 interrupts where the host waited
-  a fixed 0.25 s before reading, the share carrying a second reset rose with the interrupt rate,
-  consistent with independent strikes landing in the wait. About one interrupt in eleven reset again
-  whatever the rate, which looks like a property of the event rather than of the beam. Thirteen
-  reset loops of 21 to 62 resets each were also recorded, none of them at the comparison condition,
-  and \(\sigma_{\mathrm{FI}}\) counts every reset in them.</p>
-  <p>Most hidden strikes, though, fell before the host had even detected the first reset. Split by
-  when the host was watching, at the comparison condition:</p>
-  <div class="table-wrap"><table class="validation">
-    <thead><tr><th>Phase</th><th>Share hiding a second reset</th></tr></thead>
-    <tbody id="detectionTable"></tbody>
-  </table></div>
-  <p>A tenth to an eighth of the four FRAM builds' interrupts were hidden this way at the test flux
-  (6 to 17%). The loss after detection was 2 to 3 points, and the rest fell before it. The true
-  interrupt rate of these builds therefore likely lies 12 to 16% above the host-detected rate and 7
-  to 10% below the reset-counter rate. The range reflects one 21-reset failure at that condition,
-  which the loop test can read either as a loop or as independent strikes. Pausing the beam or
-  closing a shutter on detection (Wilcox et al. 2017; TI's MSP430FR5969-SP report) would remove only
-  the 2 to 3 points. The latency before detection remains, and here it was set by the host's own
-  wait and timeouts, which also took up to 29% of beam-on time, so detection latency is the lever,
-  not recovery under beam.</p>
-  <div class="metrics" id="hiddenMetrics"></div>
-  <p class="note">Hidden strikes bias a counted interrupt rate low, and with it a projected mission
-  interrupt rate. They do not bias the clean-cycle fraction or the corruption-event rate, since both
-  are counted only on cycles that survived. Three measured inputs and one choice set a dynamic
-  test's flux and work cycle: the lost-cycle cross section from a pilot, the recovery time per lost
-  cycle, the detection latency, and the targeted share of surviving cycles.</p>
+  <h2>A caution on hidden strikes</h2>
+  <p>Recovering a device under beam raises a question of counting. If a second strike lands before
+  the host has detected and recovered from the first, the device resets again but no new recovery
+  episode opens. This is the counting loss known from radiation detectors (Knoll 2010). Zimmaro et
+  al. (TNS 2022) measured it on a radiation monitoring system recovered by an external watchdog, where a
+  counted cross section fell by a factor of 3.76 as flux rose by a factor of 10.5.</p>
+  <p>In the companion campaign, the device's reset counter records these hidden resets, along with
+  repeated resets that follow a single event, so the true interrupt rate lies between the host's
+  count and the counter's. At the reference condition, 11 to 13% of the interrupts in the four FRAM
+  builds were hidden this way, so their true interrupt rate likely lies 12 to 16% above the
+  host-detected rate. The estimate holds on average; allowing for its uncertainty, the hidden share
+  could lie anywhere from 6 to 17%.</p>
+  <p>Most of that loss arose while the host was still waiting to detect the first reset, and 2 to 3
+  points arose during recovery. Closing a shutter on detection keeps recovery out of the exposed
+  window, as Wilcox et al. (2017) did with a board-mounted shutter whose closed time was subtracted
+  from the delivered fluence, and as Texas Instruments (2019) did to keep a second strike out of the
+  post-reset boot. The detection latency, set here by the host's own wait and timeouts, is the
+  window that remains.</p>
+  <p class="note">What this means for a design: hidden strikes bias a host-detected interrupt rate
+  low, and with it a projected mission interrupt rate. They do not bias the clean-cycle fraction,
+  \(\sigma_{\mathrm{cyc}}\) or the corruption-event rate, since those are counted on cycles that
+  survived. Three measured inputs and one choice set a dynamic test's flux and work cycle: the
+  lost-cycle cross section from a pilot, the recovery time per lost cycle, the detection latency,
+  and the targeted share of surviving cycles.</p>
 </section>
 
 <section class="card" id="quantities">
@@ -225,25 +271,29 @@
       <tr><td>Beam-on time</td><td>Time the beam was on the device.</td><td>paper §II-D</td></tr>
       <tr><td>In-cycle time</td><td>The part of beam-on time spent inside work cycles.</td><td>§III-B</td></tr>
       <tr><td>Recovery time</td><td>The part of beam-on time spent restoring the device after an interruption. Recoveries that paused the beam are counted separately.</td><td>§III-A</td></tr>
-      <tr><td>Detection latency</td><td>Time from a reset to the host detecting it, in which a further reset opens no new recovery episode.</td><td>§IV-B</td></tr>
+      <tr><td>Detection latency</td><td>The host's wait to detect an interrupt, from a reset to its detection, in which a further reset opens no new recovery episode.</td><td>§IV-B</td></tr>
       <tr><td>Countable exposure</td><td>Fluence delivered during work cycles that survive.</td><td>§IV-B</td></tr>
       <tr><td>\(W\)</td><td>Work-cycle time, from input reception to output transmission, measured event-free.</td><td>§II-B</td></tr>
-      <tr><td>\(\theta\)</td><td>Clean-cycle fraction, the share of attempted work cycles that survive.</td><td>§IV-A</td></tr>
+      <tr><td>\(\theta\)</td><td>Clean-cycle fraction, the share of attempted work cycles that survive; \(1-\theta\) is the share lost.</td><td>§IV-A</td></tr>
       <tr><td>\(\phi\)</td><td>Flux, cm⁻² s⁻¹.</td><td>§II</td></tr>
-      <tr><td>\(\sigma_{\mathrm{cyc}}\)</td><td>Cross section for losing a work cycle, cm², fitted to the direct count of surviving cycles; \(\sigma_{\mathrm{cyc}}\phi\) is the lost-cycle rate per second of in-cycle time.</td><td>§IV-A</td></tr>
-      <tr><td>\(\sigma_{\mathrm{FI}}\)</td><td>Cross section for functional interrupts, cm², counted from the device's reset counter over beam-on exposure.</td><td>§III-B</td></tr>
-      <tr><td>\(\sigma_{\mathrm{det}}\)</td><td>Cross section for host-detected interrupts, cm², counted from the recovery record over beam-on exposure; matches \(\sigma_{\mathrm{cyc}}\) in neither count nor exposure basis.</td><td>§IV-A</td></tr>
+      <tr><td>\(\sigma_{\mathrm{cyc}}\)</td><td>Cross section for a lost work cycle, cm²: an attempted cycle in which a host-detected interrupt occurred, counted once however many it carried, over the in-cycle time of attempted cycles. A retried execution is not an attempt. \(\sigma_{\mathrm{cyc}}\phi\) is the lost-cycle rate per second of in-cycle time.</td><td>Table II, §IV-A</td></tr>
+      <tr><td>\(\sigma_{\mathrm{FI}}\)</td><td>Cross section for functional interrupts, cm²: one per increment of the device's reset counter, whether or not the host detected it, plus one for each escalated recovery that ended its call before the counter was read again (16 at the reference condition, under 2% of the count), over beam-on time while the host ran a call.</td><td>Table II, §III-B</td></tr>
+      <tr><td>\(\sigma_{\mathrm{det}}\)</td><td>Cross section for host-detected interrupts, cm²: one per detection in the host's recovery record, each opening one recovery episode, over the same beam-on exposure.</td><td>Table II, §III-A</td></tr>
       <tr><td>Corruption event</td><td>One or more contiguous counted errors in a single call, kept only if no recovery began in the cycle that delivered it. Its cross section is over the in-cycle time of attempted cycles scaled by \(\theta\), the exposure of the cycles that returned a result.</td><td>§II-D, §III-B</td></tr>
       <tr><td>\(\tau\)</td><td>Mean recovery time per lost cycle.</td><td>§IV-B</td></tr>
-      <tr><td>\(D\)</td><td>Duty factor, the share of in-cycle plus recovery time that yields countable exposure.</td><td>§IV-B</td></tr>
+      <tr><td>\(D\)</td><td>Duty factor, the share of the time spent running cycles and recovering that yields countable exposure.</td><td>§IV-B</td></tr>
       <tr><td>\(\Phi\), \(T\)</td><td>Target fluence and the wall-clock time to reach it, \(T=\Phi/\phi\). Site-only conveniences.</td><td>this site</td></tr>
     </tbody>
   </table></div>
   <p class="help">The paper reports two primary quantities, the functional interrupt and the
-  corruption event. A counted error is the step between: a corrupted result that passed both
-  screening steps, which feeds corruption events only. The paper avoids SEFI and SEU for these
-  quantities because single-particle attribution cannot be established for them. The site
-  follows.</p>
+  corruption event, and names each by its effect rather than its cause. A counted error is the step
+  between: a corrupted result that passed both screening steps, which feeds corruption events only.
+  These are the quantities conventionally reported as SEFI and SEU counts, which are defined by
+  attribution to one ionizing particle (JEDEC JESD57A; Koga et al. 1997); this campaign cannot
+  establish that attribution, so the site follows the paper's names. Each rate is an operational
+  cross section, after the component-level and system-level distinction of Coronetti et al. (2021).
+  Positive counts carry exact 95% Poisson intervals (Garwood 1936; Ricker 1937), and a zero count
+  the one-sided 95% upper limit 2.996/Φ.</p>
 </section>
 
 <section class="card" id="facilities">
@@ -258,14 +308,59 @@
 
 <section class="card" id="references">
   <h2>References</h2>
-  <ul>
-    <li>Hudson, Hunnicutt, Loveless, "Design Strategies for Dynamic Single-Event Effect Testing of Algorithmic Computation," IEEE Trans. Nucl. Sci. (RADECS 2026). The companion paper; every number on this site traces to it.</li>
-    <li>Zimmaro et al., "Radiation testing of complex systems: a flux-selection methodology," RADECS 2022; and the 2024 follow-up. The flux-selection method.</li>
-    <li>Young, "A first order approximation to the optimum checkpoint interval," Commun. ACM, 1974; Daly, "A higher order estimate of the optimum checkpoint interval," Future Gener. Comput. Syst., 2006. The survival form.</li>
-    <li>Coronetti et al., IEEE Trans. Nucl. Sci., 2021. Availability from downtime and cross section; ten duty cycles between losses of function.</li>
-    <li>ESCC Basic Specification No. 25100. Active-time share and the dead-time cap.</li>
-    <li>Knoll, <em>Radiation Detection and Measurement</em>. The counting loss from a second strike landing inside a detector's dead time, the mechanism behind a hidden interrupt.</li>
-    <li>Wilcox et al., NASA GSFC 2017; Texas Instruments MSP430FR5969-SP heavy-ion report. Shutter arrangements that remove recovery from the exposed window.</li>
+  <p class="note">Every work below is cited in the companion paper, whose bibliography these entries follow. Each line says what the site draws from it.</p>
+  <ul class="refs">
+    <li>I. Hudson, H. Hunnicutt, T. D. Loveless, "Design strategies for dynamic single-event effect testing of algorithmic computation," <em>IEEE Trans. Nucl. Sci.</em> (RADECS 2026). The companion paper; every number on this site traces to it.</li>
+  </ul>
+  <h3>The relation and its extensions</h3>
+  <ul class="refs">
+    <li>A. Zimmaro, R. Ferraro, J. Boch, F. Saigné, R. García Alía, A. Masi et al., "Radiation test flux selection methodology to optimize SEE observability on systems with different operating modes," Proc. RADECS 2022, pp. 229–236. <a href="https://doi.org/10.1109/RADECS55911.2022.10412576">doi:10.1109/RADECS55911.2022.10412576</a> <span class="why">The flux-selection method the tools implement.</span></li>
+    <li>A. Zimmaro, "Radiation effects and system level testing: application to wireless communications," PhD thesis, 2024. <span class="why">Further development of the method.</span></li>
+    <li>J. W. Young, "A first order approximation to the optimum checkpoint interval," Commun. ACM, vol. 17, no. 9, pp. 530–531, 1974. <a href="https://doi.org/10.1145/361147.361115">doi:10.1145/361147.361115</a> <span class="why">The exponential survival form from checkpointed computation.</span></li>
+    <li>J. T. Daly, "A higher order estimate of the optimum checkpoint interval for restart dumps," Future Gener. Comput. Syst., vol. 22, no. 3, pp. 303–312, 2006. <a href="https://doi.org/10.1016/j.future.2004.11.016">doi:10.1016/j.future.2004.11.016</a> <span class="why">The same, to higher order.</span></li>
+    <li>A. Coronetti, R. García Alía, J. Budroweit, T. Rajkowski, I. Da Costa Lopes et al., "Radiation hardness assurance through system-level testing: risk acceptance, facility requirements, test methodology, and data exploitation," IEEE Trans. Nucl. Sci., vol. 68, no. 5, pp. 958–969, 2021. <a href="https://doi.org/10.1109/TNS.2021.3061197">doi:10.1109/TNS.2021.3061197</a> <span class="why">Availability from downtime and cross section, the mission counterpart of the duty factor; at least ten duty cycles between two hard losses of functionality; operational cross sections.</span></li>
+    <li>European Space Components Coordination, "Single event effects test method and guidelines," ESCC Basic Specification No. 25100, Issue 2, 2014. <span class="why">Characterizing functional interrupts in all operating conditions; measuring the detectable share of test time; the 20% dead-time cap.</span></li>
+    <li>G. F. Knoll, <em>Radiation Detection and Measurement</em>, John Wiley & Sons, 2010. <span class="why">The counting loss behind a hidden strike.</span></li>
+  </ul>
+  <h3>Work between interrupts, and recovery</h3>
+  <ul class="refs">
+    <li>S. Esquer, B. Shani, A. F. Witulski, B. D. Sierawski, B. L. Bhuva, R. A. Reed et al., "Fault propagation in microprocessors with configurable cache memory," Proc. RADECS 2022, pp. 249–256. <a href="https://doi.org/10.1109/RADECS55911.2022.10412487">doi:10.1109/RADECS55911.2022.10412487</a> <span class="why">Mean work to SEFI across processor configurations.</span></li>
+    <li>S. Esquer, B. D. Sierawski, A. F. Witulski, R. D. Schrimpf, G. Karsai et al., "Single event functional interrupt (SEFI) sensitivities of a multicore microprocessor," Proc. IEEE Aerosp. Conf. 2024, pp. 4879–4889. <a href="https://doi.org/10.1109/AERO58975.2024.10521240">doi:10.1109/AERO58975.2024.10521240</a> <span class="why">Mean work to SEFI; host-commanded recovery of a Linux-class system.</span></li>
+    <li>S. Esquer, J. K. Mee, H. M. Quinn, B. D. Sierawski, R. D. Schrimpf, "Characterization of single event functional interrupts in COTS and rad-hard ARM microcontrollers," Proc. IEEE Space Comput. Conf. 2024, pp. 28–39. <a href="https://doi.org/10.1109/SCC61854.2024.00010">doi:10.1109/SCC61854.2024.00010</a> <span class="why">Functional-interrupt susceptibility of microcontrollers under protons.</span></li>
+    <li>P. Rech, L. L. Pilla, P. O. A. Navaux, L. Carro, "Impact of GPUs parallelism management on safety-critical and HPC applications reliability," Proc. IEEE/IFIP DSN 2014, pp. 455–466. <a href="https://doi.org/10.1109/DSN.2014.49">doi:10.1109/DSN.2014.49</a> <span class="why">Mean workload between failures.</span></li>
+    <li>M. Bohman, B. James, M. J. Wirthlin, H. Quinn, J. Goeders, "Microcontroller compiler-assisted software fault tolerance," IEEE Trans. Nucl. Sci., vol. 66, no. 1, pp. 223–232, 2019. <a href="https://doi.org/10.1109/TNS.2018.2886094">doi:10.1109/TNS.2018.2886094</a> <span class="why">The cross-section and work-between-failures tradeoff on the MSP430FR5969.</span></li>
+    <li>A. Zimmaro, S. Danzeca, R. Ferraro, A. Masi, J. Boch, F. Saigné et al., "Testing and validation methodology for a radiation monitoring system for electronics in particle accelerators," IEEE Trans. Nucl. Sci., vol. 69, no. 7, pp. 1642–1650, 2022. <span class="why">Masking of interrupts at high flux; millisecond self-reset.</span></li>
+    <li>L. Frías-Domínguez, G. León, J. M. Badía, J. A. Belloch, M. García-Valderas et al., "Radiation reliability of system reboots in commercial off-the-shelf SoC," IEEE Trans. Nucl. Sci., vol. 72, no. 8, pp. 2662–2670, 2025. <span class="why">Reboot times of Linux systems-on-chip.</span></li>
+    <li>Texas Instruments, "Single-event effects test report of the MSP430FR5969-SP," Report SLSEC56, 2019. <span class="why">Millisecond self-reset; a shutter closed on detection.</span></li>
+    <li>T. Wilcox, M. Campola, M. Kadari, G. Nadendla, "Single event effect testing of the Analog Devices ADV212," NASA GSFC, NTRS 20170007439, 2017. <span class="why">A board-mounted shutter with closed time subtracted from fluence.</span></li>
+  </ul>
+  <h3>Flux guidance and test methodology</h3>
+  <ul class="refs">
+    <li>S. Buchner, P. W. Marshall, S. Kniffin, K. A. LaBel, "Proton test guideline development—lessons learned," NASA GSFC, 2002. <span class="why">Bounding flux against measurement artifacts.</span></li>
+    <li>M. D. Berg, K. A. LaBel, H. Kim, M. Friendlich, A. Phan, C. Perez et al., "A comprehensive methodology for complex field programmable gate array single event effects test and evaluation," IEEE Trans. Nucl. Sci., vol. 56, no. 2, pp. 366–374, 2009. <a href="https://doi.org/10.1109/TNS.2009.2013857">doi:10.1109/TNS.2009.2013857</a> <span class="why">Flux independence as a validity check; accumulation past correction.</span></li>
+    <li>J. A. Zoutendyk, H. R. Schwartz, R. K. Watson, Z. Hasnain, L. R. Nevill, "Single-event upset (SEU) in a DRAM with on-chip error correction," IEEE Trans. Nucl. Sci., vol. NS-34, no. 6, 1987. <a href="https://doi.org/10.1109/TNS.1987.4337471">doi:10.1109/TNS.1987.4337471</a> <span class="why">Flux limits for error-correcting memory.</span></li>
+    <li>G. R. Allen, L. Edmonds, C. W. Tseng, G. Swift, C. Carmichael, "Single-event upset (SEU) results of embedded error detect and correct enabled block random access memory (BlockRAM) within the Xilinx XQR5VFX130," IEEE Trans. Nucl. Sci., vol. 57, no. 6, 2010. <a href="https://doi.org/10.1109/TNS.2010.2085447">doi:10.1109/TNS.2010.2085447</a> <span class="why">Flux limits for error-correcting memory.</span></li>
+    <li>G. Allen, L. D. Edmonds, G. Swift, C. Carmichael, C. W. Tseng, K. Heldt et al., "Single event test methodologies and system error rate analysis for triple modular redundant field programmable gate arrays," IEEE Trans. Nucl. Sci., vol. 58, no. 3, 2011. <a href="https://doi.org/10.1109/TNS.2011.2105282">doi:10.1109/TNS.2011.2105282</a> <span class="why">Flux limits for redundant designs.</span></li>
+    <li>JEDEC Solid State Technology Association, "Test procedures for the measurement of single-event effects in semiconductor devices from heavy ion irradiation," JESD57A, 2017. <span class="why">Heavy-ion test procedure; SEU and SEFI definitions.</span></li>
+    <li>H. Quinn, "Challenges in testing complex systems," IEEE Trans. Nucl. Sci., vol. 61, no. 2, pp. 766–786, 2014. <a href="https://doi.org/10.1109/TNS.2014.2302432">doi:10.1109/TNS.2014.2302432</a> <span class="why">Dynamic testing; test-as-you-fly; flux guidance.</span></li>
+    <li>H. Quinn, K. Gnawali, S. Tragoudas, "Updates on testing microprocessors effectively," IEEE Trans. Nucl. Sci., vol. 68, no. 5, pp. 842–849, 2021. <a href="https://doi.org/10.1109/TNS.2021.3072335">doi:10.1109/TNS.2021.3072335</a> <span class="why">Test-as-you-fly for microprocessors.</span></li>
+    <li>H. Quinn, W. H. Robinson, P. Rech, M. Aguirre, A. Barnard, M. Desogus et al., "Using benchmarks for radiation testing of microprocessors and FPGAs," IEEE Trans. Nucl. Sci., vol. 62, no. 6, pp. 2547–2554, 2015. <a href="https://doi.org/10.1109/TNS.2015.2498313">doi:10.1109/TNS.2015.2498313</a> <span class="why">Dependence of results on program behavior.</span></li>
+    <li>W. Stirk, E. Poff, J. Smith, J. Goeders, M. Wirthlin, "Comparison of neutron radiation testing approaches for a complex SoC," IEEE Trans. Nucl. Sci., vol. 70, no. 4, pp. 505–514, 2023. <a href="https://doi.org/10.1109/TNS.2023.3237080">doi:10.1109/TNS.2023.3237080</a> <span class="why">Dependence of results on test approach.</span></li>
+    <li>H. M. Quinn, D. A. Black, W. H. Robinson, S. P. Buchner, "Fault simulation and emulation tools to augment radiation-hardness assurance testing," IEEE Trans. Nucl. Sci., vol. 60, no. 3, pp. 2119–2142, 2013. <a href="https://doi.org/10.1109/TNS.2013.2259503">doi:10.1109/TNS.2013.2259503</a> <span class="why">Fault injection, the basis of the single-bit-flip test.</span></li>
+    <li>F. Garwood, "Fiducial limits for the Poisson distribution," Biometrika, vol. 28, no. 3/4, 1936. <a href="https://doi.org/10.1093/biomet/28.3-4.437">doi:10.1093/biomet/28.3-4.437</a> <span class="why">Exact Poisson intervals.</span></li>
+    <li>W. E. Ricker, "The concept of confidence or fiducial limits applied to the Poisson frequency distribution," J. Am. Stat. Assoc., vol. 32, no. 198, 1937. <a href="https://doi.org/10.1080/01621459.1937.10502773">doi:10.1080/01621459.1937.10502773</a> <span class="why">Exact Poisson intervals.</span></li>
+  </ul>
+  <h3>Firmware, storage and microcontroller sensitivity</h3>
+  <ul class="refs">
+    <li>R. Koga, S. H. Penzin, K. B. Crawford, W. R. Crain, "Single event functional interrupt (SEFI) sensitivity in microcircuits," Proc. RADECS 1997, pp. 311–318. <a href="https://doi.org/10.1109/RADECS.1997.698915">doi:10.1109/RADECS.1997.698915</a> <span class="why">SEFI definition; dependence on exercised hardware.</span></li>
+    <li>P. V. Nekrasov, A. B. Karakozov, D. V. Bobrovskyi, V. A. Marfin, "Investigation of single event functional interrupts in microcontroller with PIC17 architecture," Proc. RADECS 2015, pp. 139–142. <a href="https://doi.org/10.1109/RADECS.2015.7365625">doi:10.1109/RADECS.2015.7365625</a> <span class="why">Dependence on exercised hardware.</span></li>
+    <li>S. Houssany, N. Guibbaud, F. Miller, T. Cheviron, T. Colladant, "Experimental test approach for SEFI categorization in microprocessors," Proc. RADECS 2021, pp. 68–74. <a href="https://doi.org/10.1109/RADECS53308.2021.9954528">doi:10.1109/RADECS53308.2021.9954528</a> <span class="why">Dependence on exercised hardware.</span></li>
+    <li>L. Noizette, F. Miller, T. Colladant, Y. Helen, R. Leveugle, "Understanding the link between complex digital devices soft error rate and the running software," IEEE Trans. Nucl. Sci., vol. 70, no. 8, pp. 1747–1754, 2023. <a href="https://doi.org/10.1109/TNS.2023.3284899">doi:10.1109/TNS.2023.3284899</a> <span class="why">Dependence on the running software.</span></li>
+    <li>R. Velazco, S. Karoui, T. Chapuis, "SEU testing of 32-bit microprocessors for space application," Proc. IEEE REDW 1992. <a href="https://doi.org/10.1109/REDW.1992.247330">doi:10.1109/REDW.1992.247330</a> <span class="why">Register-only test programs against application-like code.</span></li>
+    <li>H. Quinn, T. Fairbanks, J. L. Tripp, G. Duran, B. Lopez, "Single-event effects in low-cost, low-power microprocessors," Proc. IEEE REDW 2014, pp. 246–254. <a href="https://doi.org/10.1109/REDW.2014.7004596">doi:10.1109/REDW.2014.7004596</a> <span class="why">Working data in FRAM on a related MSP430; millisecond self-reset.</span></li>
+    <li>A. L. Bosser, V. Gupta, A. Javanainen, G. Tsiligiannis, S. D. LaLumondiere, D. Brewe et al., "Single-event effects in the peripheral circuitry of a commercial ferroelectric random access memory," IEEE Trans. Nucl. Sci., vol. 65, no. 8, pp. 1708–1714, 2018. <a href="https://doi.org/10.1109/TNS.2018.2797543">doi:10.1109/TNS.2018.2797543</a> <span class="why">FRAM effects in peripheral circuitry.</span></li>
+    <li>A. Ju, H. Guo, F. Zhang, L. Ding, G. Du, J. Guo et al., "Failure analysis of commercial ferroelectric random access memory for single event effect," IEEE Trans. Nucl. Sci., vol. 69, no. 4, 2022. <a href="https://doi.org/10.1109/TNS.2022.3153795">doi:10.1109/TNS.2022.3153795</a> <span class="why">FRAM effects in peripheral circuitry.</span></li>
+    <li>N. Harris, W. Stirk, D. Black, J. Black, M. Wirthlin, J. Goeders, "Dynamic testing of a commercial FRAM device under gamma ray dose and neutron beam," IEEE Trans. Nucl. Sci., vol. 71, no. 8, 2024. <a href="https://doi.org/10.1109/TNS.2024.3379516">doi:10.1109/TNS.2024.3379516</a> <span class="why">FRAM failures only while actively read and written.</span></li>
   </ul>
 </section>
 
@@ -275,7 +370,7 @@
   <p>Companion to Hudson, Hunnicutt and Loveless, "Design Strategies for Dynamic Single-Event Effect Testing of Algorithmic Computation," IEEE Trans. Nucl. Sci. (RADECS 2026). IU Center for Reliable and Trusted Electronics.</p>
 </div></footer>
 
-<script src="assets/model.js?v=20260922-v81"></script>
+<script src="assets/model.js?v=20260924-refs"></script>
 <script>
 (function () {
   "use strict";
@@ -288,17 +383,9 @@
   document.getElementById("fitMetrics").innerHTML =
     S.metric("σ_cyc, six builds", S.sci(sig.value, 2), " cm²", "95% interval " + S.sci(sig.ci95[0], 2) + " to " + S.sci(sig.ci95[1], 2) + "; " + (sig.value * sig.nominalFlux).toFixed(2) + " s⁻¹ at 5×10⁴", true) +
     S.metric("Pure-FRAM 16 MHz builds", "p = 0.56", "", "one shared σ_cyc still holds where only W moves; Weibull shape 0.98 (0.90 to 1.06)") +
-    S.metric("Host-record rate σ_det φ", sig.hostDetectedRate.toFixed(2), " s⁻¹", "lies above every measured point") +
-    S.metric("Longest W at θ = 0.90, 5×10⁴", S.dur(S.longestW(0.9, sig.value, 5e4)), "", "three of six builds sit under it; FRAM_B50 exceeds it 1.6-fold and the two at B=200 about 6-fold");
-  document.getElementById("detectionTable").innerHTML = S.detectionRows();
+    S.metric("Host-record σ_det", S.sci(sig.sigmaDet, 2), " cm²", sig.hostDetectedRate.toFixed(2) + " s⁻¹ at 5×10⁴; predicts more survivors than every build had") +
+    S.metric("Longest W at θ = 0.90, 5×10⁴", S.dur(S.longestW(0.9, sig.value, 5e4)), "", "three of six builds sit under it; FRAM_B50 exceeds it by a factor of 1.6 and the two at B=200 by about 6");
   document.getElementById("timeBudgetTable").innerHTML = S.timeBudgetRows();
-  var FI = S.SIGMA_FI, DET = S.DETECTION;
-  function pctRange(a, unit) { return Math.round(a[0] * 100) + " to " + Math.round(a[1] * 100) + unit; }
-  document.getElementById("hiddenMetrics").innerHTML =
-    S.metric("σ_FI, pooled", S.sci(FI.pooled, 2), " cm²", FI.comparableBuilds + " directly comparable builds, " + FI.spreadFold + "-fold spread", true) +
-    S.metric("Hidden share, 5×10⁴ at t_det = " + DET.tDetDefault_s + " s", (S.hiddenShare(FI.pooled, 5e4, DET.tDetDefault_s) * 100).toFixed(1) + "%", "", "the estimator on the recovery page") +
-    S.metric("Measured at the test flux", pctRange(DET.magnitudeRange, "%"), "", "a tenth to an eighth, four FRAM builds") +
-    S.metric("Of which after detection", pctRange(DET.afterDetectionPoints, " points"), "", "the part a shutter or pause can remove");
   document.getElementById("facilityTable").innerHTML = S.FACILITIES.map(function (f) {
     var r = (f.fluxMin == null ? "up to " : S.sci(f.fluxMin) + " to ") + S.sci(f.fluxMax);
     return "<tr><td>" + f.label + "</td><td>" + r + "</td><td class='note'>" + f.source + "</td></tr>";

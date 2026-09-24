@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Flux and work cycle | Dynamic SEE Test Design</title>
 <meta name="description" content="Choose a heavy-ion test flux, or the longest work cycle a flux allows, from one cross section and a target share of surviving work cycles.">
-<link rel="stylesheet" href="assets/style.css?v=20260922-v81">
+<link rel="stylesheet" href="assets/style.css?v=20260924-refs">
 <script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['$$','$$']]},options:{skipHtmlTags:['script','noscript','style','textarea','pre']}};</script>
 <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 </head>
@@ -32,8 +32,11 @@
   allows.</p>
   <p class="note">The survival form is the one used for checkpointed computation (Young 1974; Daly
   2006). Choosing flux from it is the method of Zimmaro et al. (RADECS 2022), which this site's
-  companion paper tests against a direct count of surviving cycles on heavy ions and extends. This
-  page charges nothing for recovery time; the <a href="recovery.html">recovery page</a> does.</p>
+  companion paper tests against a direct count of surviving cycles on heavy ions and extends. It sits
+  alongside established guidance that bounds flux to keep a measurement free of artifacts (Buchner et
+  al. 2002; Berg et al. 2009; Quinn 2014). This page charges nothing for recovery time; the
+  <a href="recovery.html">recovery page</a> does. Full citations are on the
+  <a href="background.html#references">evidence page</a>.</p>
 </section>
 
 <section class="card">
@@ -66,9 +69,11 @@
       <label for="inputTheta">Target clean-cycle fraction \(\theta\) = <span id="thetaValue">90</span> %</label>
       <input id="inputTheta" type="range" min="50" max="99" step="1" value="90">
       <p class="help">The share of attempted work cycles you want to survive. The choice is yours.
-      The companion paper illustrates with 0.90; the published method sets \(\theta\) indirectly by
-      maximizing the chance of seeing a rarer failure first, and other guidance suggests about ten
-      cycles between two losses of function.</p>
+      The companion paper illustrates with 0.90. Zimmaro et al. (RADECS 2022) arrive at \(\theta\) through
+      the flux choice itself, maximizing the chance of seeing a rarer failure first. Coronetti et al.
+      (2021), for system-level testing, recommend a flux that lets at least ten passes through the
+      system's operating modes complete between two hard losses of functionality, those needing a
+      power cycle to clear.</p>
     </div>
   </div>
 </section>
@@ -81,10 +86,28 @@
     \phi\,W = \frac{-\ln\theta}{\sigma_{\mathrm{cyc}}}$$
   </div>
   <p class="note">Every pair of flux and work-cycle time with the same product delivers the same
-  share of surviving cycles, so a tenfold higher flux is paid for by a tenfold shorter work cycle.
-  \(\phi W\) is the fluence one cycle receives.</p>
+  share of surviving cycles, so a flux ten times higher is paid for by a work cycle ten times
+  shorter. \(\phi W\) is the fluence one cycle receives.</p>
   <div id="verdict"></div>
   <div class="metrics" id="outputs"></div>
+</section>
+
+<section class="card">
+  <h2>Why long work cycles pay more for flux</h2>
+  <p class="note">Because the exponent scales with \(\phi W\), pushing flux costs a long cycle far
+  more than a short one. In the companion campaign, one \(\sigma_{\mathrm{cyc}}\) described six
+  builds with work cycles from 20 to 814 ms. At \(2\times10^{5}\) cm⁻² s⁻¹, four times the flux
+  they ran at, the same fit puts the longest cycle at 8% surviving and the shortest still at 94%.
+  At the matched flux and \(\theta=0.90\), the longest usable cycle is 135 ms. Three of the six
+  builds sit under it, FRAM_B50 exceeds it by a factor of 1.6, and the two at \(B=200\) by a
+  factor of about 6.</p>
+  <img class="fig" src="assets/img/survival_measurement_fluxfamily.png" alt="Measured clean-cycle fraction against work-cycle time for six builds, with the survival curve drawn at five fluxes from 1e4 to 2e5">
+  <p class="help">The companion paper's Fig. 4. Points are direct counts of work cycles with no
+  recovery episode, with exact 95% binomial intervals, taken at the matched flux. Every curve uses
+  the single fitted \(\sigma_{\mathrm{cyc}}=1.56\times10^{-5}\) cm² and no other parameter: the
+  solid one at the fit's own flux, \(5\times10^{4}\) cm⁻² s⁻¹, the dashed ones at other fluxes.
+  Where a curve crosses your target \(\theta\), its \(W\) is that flux's longest usable work
+  cycle.</p>
 </section>
 
 <section class="card">
@@ -105,7 +128,8 @@
   handling interrupts: recovering from them, waiting to detect them, and re-running the cycles they
   cut short. Either will predict more surviving cycles than a test delivers, by an amount that grows
   with how much time the device spends outside its work cycle. In the companion campaign the host's
-  record gave a rate about half the fitted one. See
+  record gave \(\sigma_{\mathrm{det}}=8.3\times10^{-6}\) cm², a rate of 0.42 s⁻¹ against the
+  fitted 0.78 s⁻¹, and predicted a higher surviving share than every build measured. See
   <a href="background.html#validation">the evidence</a>.</p>
 </section>
 
@@ -123,7 +147,7 @@
   <p>Companion to Hudson, Hunnicutt and Loveless, "Design Strategies for Dynamic Single-Event Effect Testing of Algorithmic Computation," IEEE Trans. Nucl. Sci. (RADECS 2026). IU Center for Reliable and Trusted Electronics.</p>
 </div></footer>
 
-<script src="assets/model.js?v=20260922-v81"></script>
-<script src="assets/main.js?v=20260922-v81"></script>
+<script src="assets/model.js?v=20260924-refs"></script>
+<script src="assets/main.js?v=20260924-refs"></script>
 </body>
 </html>
