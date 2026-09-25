@@ -6,9 +6,9 @@ const S = require("../assets/model.js");
 const close = (a, b, rel) => Math.abs(a - b) <= rel * Math.abs(b);
 
 test("release identifies the manuscript package it was built against", () => {
-  assert.equal(S.RELEASE.schemaVersion, "flux-selection-design-tool-v6-2026-09-24");
-  assert.ok(S.RELEASE.manuscript.startsWith("testing-opt(30).tex"));
-  assert.equal(S.RELEASE.supersedes, "flux-selection-design-tool-v5-2026-09-22");
+  assert.equal(S.RELEASE.schemaVersion, "flux-selection-design-tool-v7-2026-09-25");
+  assert.ok(S.RELEASE.manuscript.startsWith("testing-opt.tex"));
+  assert.equal(S.RELEASE.supersedes, "flux-selection-design-tool-v6-2026-09-24");
 });
 
 test("sigma_cyc pins the released direct fit", () => {
@@ -120,7 +120,7 @@ test("recovery charge for FRAM_B1 is close to one: as long recovering as running
   assert.ok(charge > 0.9 && charge < 1.0, String(charge));
 });
 
-test("to first order W drops out of the charge; forty times the cycle pays about 75%", () => {
+test("to first order W drops out of the charge (model property; not a numeric example in v86)", () => {
   const c = S.CONFIGS.find((x) => x.id === "FRAM_B1");
   const sigma = S.SIGMA_CYC.value;
   const ratio = S.chargeAtFlux(sigma, 5e4, 40 * c.W_s, c.tau_s) / S.chargeAtFlux(sigma, 5e4, c.W_s, c.tau_s);
@@ -159,7 +159,7 @@ test("measured over beam-on time, the countable share is 12 to 42%", () => {
   assert.deepEqual([...S.TIME_BUDGET.measuredCountableShare], [0.12, 0.42]);
   // the 58 to 88% complement was commented out of Sec. VI in v83
   assert.equal(S.CAMPAIGN.uncountedBeamOnShare, undefined);
-  // D charges recovery alone, so every published D is at least the top of the measured range
+  // by default only the recovery part of dead time is charged to D, so every published D is at least the top of the measured range
   for (const c of S.CONFIGS.filter((x) => ["FRAM_B1", "FRAM_B50", "FRAM_B200", "SRAM_Mixed_B200"].includes(x.id))) {
     assert.ok(c.D >= S.TIME_BUDGET.measuredCountableShare[0], c.id);
   }
@@ -225,12 +225,21 @@ test("recovery statistics match Secs. III-A and IV-B", () => {
   assert.equal(C.manualSuccessRate, 0.964);
   assert.deepEqual([...C.successDifferenceCI_points], [-5, 3]);
   assert.equal(C.autoSuccessRateCensoredAsFailure, undefined);
-  assert.deepEqual([...C.slowestFivePercentShare], [0.23, 0.69]);
+  // the slowest-5%-of-episodes and escalated-recovery-mean statistics were cut from v86 (L424)
+  assert.equal(C.slowestFivePercentShare, undefined);
+  assert.equal(C.escalatedRecoveryMean_s, undefined);
+  // v86 L411: first attempts failed in 15% and 22% of recoveries for FRAM_B1 and SRAM_B1,
+  // against 6 to 11% for the rest -- replacing (30)'s "~4% for five builds, 16% for SRAM_B1"
+  assert.equal(C.resyncFailureShare, undefined);
+  assert.equal(C.resyncFailureShareSRAM_B1, undefined);
+  assert.equal(C.firstAttemptFailureShare.FRAM_B1, 0.15);
+  assert.equal(C.firstAttemptFailureShare.SRAM_B1, 0.22);
+  assert.deepEqual([...C.firstAttemptFailureShare.restRange], [0.06, 0.11]);
   assert.equal(C.episodesPerLostCycleSRAM_Mixed, 2.5);
   assert.equal(C.episodesPerLostCycleOthersMax, 1.6);
   assert.equal(Math.round(C.sweepActualFluence / C.sweepPauseFluence), C.sweepExposureFactor);
   assert.equal(C.hostDetections, 787);
-  // a failed resync costs thirty to sixty successful recoveries
+  // a failed resync costs thirty to sixty successful recoveries, distinct from the detection latency
   assert.equal(Math.round(C.resyncTimeout_s[0] / C.settle_s / 10) * 10, 30);
   assert.equal(Math.round(C.resyncTimeout_s[1] / C.settle_s / 10) * 10, 60);
 });

@@ -7,16 +7,17 @@
  * longest work cycle for a fixed flux.
  *
  * The survival form follows Young (1974) and Daly (2006); the flux-selection framing
- * follows Zimmaro et al. (RADECS 2022). The recovery charge (duty factor D) is the
- * companion paper's extension. Detection latency, the host's wait from a reset to its
- * detection, is charged the way the paper charges it: added to tau as a check on D.
+ * follows Zimmaro et al. (RADECS 2022). The duty factor D is the companion paper's
+ * extension to dead time: the beam-on time from an interrupt until the device resumes
+ * work, in which the host cannot observe it. Dead time has two parts, the detection
+ * latency and the recovery that follows; tau here is measured as the recovery part, and
+ * adding the detection latency to it is a check on D against the directly measured share.
  * Hidden strikes are carried only as the paper's caution, never as a method.
  *
  * Every number here traces to the RADECS-26 repository (analysis/k_direct_fit_v1.json,
  * survival_measurement_v3.csv, duty_factor_v3.csv, corruption_cross_sections_clean_cycle_v1.json,
- * call_time_budget_v1.json, storm_filter_impact_v2.json) and to the PI's Overleaf copy
- * testing-opt(30).tex of 2026-09-24, two rounds past package v83. If this file and the
- * paper disagree, the paper wins.
+ * call_time_budget_v1.json, storm_filter_impact_v2.json) and to testing-opt.tex, package
+ * TNS_FINAL_2026-09-25-v86, the final copy. If this file and the paper disagree, the paper wins.
  */
 (function (root, factory) {
   "use strict";
@@ -27,10 +28,10 @@
   "use strict";
 
   var RELEASE = Object.freeze({
-    schemaVersion: "flux-selection-design-tool-v6-2026-09-24",
-    releaseDate: "2026-09-24",
-    manuscript: "testing-opt(30).tex, 2026-09-24 (after package TNS_REMEDIATION_2026-09-23-v83)",
-    supersedes: "flux-selection-design-tool-v5-2026-09-22"
+    schemaVersion: "flux-selection-design-tool-v7-2026-09-25",
+    releaseDate: "2026-09-25",
+    manuscript: "testing-opt.tex, package TNS_FINAL_2026-09-25-v86, the final copy",
+    supersedes: "flux-selection-design-tool-v6-2026-09-24"
   });
 
   var THETA_DEFAULT = 0.90;
@@ -102,11 +103,11 @@
     creditedOnce: Object.freeze({ p: 0.64, spreadFactor: 1.2 }),
     counterOverHost: Object.freeze([1.17, 1.44]),
     escalatedCredits: 16,
-    source: "testing-opt(30).tex Secs. III-B and V, Table II"
+    source: "testing-opt.tex (v86) Secs. III-B and V, Table III"
   });
 
   /* Corruption-event cross section, divided by the fluence delivered during the work
-   * cycles that returned a clean result (in-cycle exposure times theta, Table II),
+   * cycles that returned a clean result (in-cycle exposure times theta, Table III),
    * because it can only be read off a delivered result. Only printed values are carried
    * here; per-build rates appear only graphically, in the paper's Fig. 2. */
   var CORRUPTION = Object.freeze({
@@ -118,13 +119,14 @@
     levelPair: Object.freeze(["SRAM_B1", "FRAM_B1_Throttled"]),
     batchTest: Object.freeze({ chi2: 0.6, dof: 2, p: 0.73 }),
     clockTest: Object.freeze({ chi2: 18.7, dof: 3, pBelow: 0.001, throttledShare: 0.65 }),
-    source: "testing-opt(30).tex Sec. III-B; analysis/corruption_cross_sections_clean_cycle_v1.json"
+    source: "testing-opt.tex (v86) Sec. III-B; analysis/corruption_cross_sections_clean_cycle_v1.json"
   });
 
   /* Where beam-on time went inside a call (Sec. III-B), and how the duty factor compares
-   * with the directly measured countable share (Sec. IV-B). D charges recovery alone, so it
-   * is an upper bound. Adding the measured detection latency per lost cycle to tau brings
-   * D close to the measured share at B <= 50. Ranges only, as printed. */
+   * with the directly measured countable share (Sec. IV-B). By default only the recovery
+   * part of dead time is charged to D, so it is an upper bound. Adding the measured
+   * detection latency per lost cycle to tau brings D close to the measured share at
+   * B <= 50. Ranges only, as printed. */
   var TIME_BUDGET = Object.freeze({
     inCycle: Object.freeze([0.24, 0.43]),
     recovery: Object.freeze([0.14, 0.36]),
@@ -135,7 +137,7 @@
     waitPerLostCycle_s: Object.freeze([0.7, 1.1]),
     dWithWaitGap: Object.freeze([0.02, 0.05]),       /* at B <= 50 */
     exampleFRAM_B1: Object.freeze({ dWithWait: 0.39, measured: 0.37 }),
-    source: "testing-opt(30).tex Secs. III-B and IV-B; analysis/call_time_budget_v1.json"
+    source: "testing-opt.tex (v86) Secs. III-B and IV-B; analysis/call_time_budget_v1.json"
   });
 
   /* Retried executions are dropped from the counted cycles and their exposure (Sec. V).
@@ -159,7 +161,7 @@
     trueRateBelowCounter: Object.freeze([0.07, 0.10]),
     resetLoops: Object.freeze({ count: 13, atReference: 0, sweepFrom: 4448, sweepTo: 3951 }),
     zimmaro: Object.freeze({ countedFall: 3.76, fluxRise: 10.5 }),
-    source: "testing-opt(30).tex Secs. IV-B, V, VI; analysis/storm_filter_impact_v2.json"
+    source: "testing-opt.tex (v86) Secs. IV-B, V, VI; analysis/storm_filter_impact_v2.json"
   });
 
   var CAMPAIGN = Object.freeze({
@@ -169,23 +171,23 @@
     workCycleRange_ms: Object.freeze([20, 814]),
     thetaRange: Object.freeze([0.51, 0.98]),
     /* 1 - D over the six builds: the share of the time spent running cycles and recovering
-     * that yields no countable exposure, charged for recovery alone. Not a share of beam-on
-     * time. */
+     * that yields no countable exposure, when only the recovery part of dead time is
+     * charged. Not a share of beam-on time. */
     uncountedCycleAndRecoveryShare: Object.freeze([0.34, 0.72]),
     settle_s: 0.165,
-    resyncFailureShare: 0.04,
-    resyncFailureShareSRAM_B1: 0.16,
+    /* Share of recoveries whose first attempt failed (Sec. IV-B): the recovery needed further
+     * attempts or, when resynchronization failed outright, the fixed timeout below. Most
+     * recovery time goes to these. FRAM_B1 and SRAM_B1 run higher than the rest. */
+    firstAttemptFailureShare: Object.freeze({ FRAM_B1: 0.15, SRAM_B1: 0.22, restRange: Object.freeze([0.06, 0.11]) }),
     /* The fixed cost of an episode that fails to resynchronize (Sec. IV-B), the time of
-     * thirty to sixty successful recoveries. */
+     * thirty to sixty successful recoveries. Distinct from the detection latency. */
     resyncTimeout_s: Object.freeze([5, 10]),
     episodesPerLostCycleSRAM_Mixed: 2.5,
     episodesPerLostCycleOthersMax: 1.6,
-    slowestFivePercentShare: Object.freeze([0.23, 0.69]),
     autoSuccessRate: 0.953,
     manualSuccessRate: 0.964,
     successDifferenceCI_points: Object.freeze([-5, 3]),
     facilityPauseMedian_s: 84.6,
-    escalatedRecoveryMean_s: 93.7,
     /* The LET sweep: pausing the beam at every host detection, at the median manual pause,
      * would have delivered this fluence instead of what was accumulated (Sec. III-A). */
     sweepPauseFluence: 1.45e7,
@@ -259,8 +261,8 @@
   }
 
   /* The charge at a given flux, with theta taken from Eq. (1). To first order W drops out
-   * and the charge is sigma_cyc*phi*tau; at larger phi*W it falls below that. The paper's
-   * example: forty times FRAM_B1's cycle, same tau, pays about 75% of FRAM_B1's charge. */
+   * and the charge is sigma_cyc*phi*tau; at larger phi*W it falls below that. This is a
+   * check on the model's own W-independence, not a numeric example v86 prints. */
   function chargeAtFlux(sigma, phi, W, tau) {
     return recoveryCharge(cleanFraction(sigma, phi, W), W, tau);
   }

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Flux and work cycle | Dynamic SEE Test Design</title>
 <meta name="description" content="Choose a heavy-ion test flux, or the longest work cycle a flux allows, from one cross section and a target share of surviving work cycles.">
-<link rel="stylesheet" href="assets/style.css?v=20260924-refs">
+<link rel="stylesheet" href="assets/style.css?v=20260925">
 <script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['$$','$$']]},options:{skipHtmlTags:['script','noscript','style','textarea','pre']}};</script>
 <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 </head>
@@ -13,11 +13,13 @@
 <header class="site-header"><div class="wrap">
   <h1>Dynamic SEE Test Design</h1>
   <p class="tagline">Match flux to work cycle so a chosen share of work cycles survives functional interrupts.</p>
+  <p class="header-actions"><a class="btn-preset ghost" href="preprint.pdf" target="_blank" rel="noopener">Read the pre-print (PDF)</a></p>
 </div></header>
 <nav class="site-nav"><ul>
   <li><a href="index.html" class="active">Flux and work cycle</a></li>
-  <li><a href="recovery.html">With recovery time</a></li>
+  <li><a href="recovery.html">With dead time</a></li>
   <li><a href="background.html">Model and evidence</a></li>
+  <li><a href="preprint.pdf" target="_blank" rel="noopener">Pre-print</a></li>
 </ul></nav>
 
 <main class="wrap">
@@ -72,8 +74,8 @@
       The companion paper illustrates with 0.90. Zimmaro et al. (RADECS 2022) arrive at \(\theta\) through
       the flux choice itself, maximizing the chance of seeing a rarer failure first. Coronetti et al.
       (2021), for system-level testing, recommend a flux that lets at least ten passes through the
-      system's operating modes complete between two hard losses of functionality, those needing a
-      power cycle to clear.</p>
+      system's operating modes, its duty cycles, complete between two hard losses of functionality,
+      those needing a power cycle to clear.</p>
     </div>
   </div>
 </section>
@@ -136,7 +138,7 @@
 <section class="card">
   <h2>Where to go next</h2>
   <div class="next-links">
-    <a class="next-link" href="recovery.html"><b>With recovery time</b><span>Charge the test for the time a lost cycle costs, and see how a detection delay can hide a second strike.</span></a>
+    <a class="next-link" href="recovery.html"><b>With dead time</b><span>Charge the test for the dead time a lost cycle costs, and see how a detection delay can hide a second strike.</span></a>
     <a class="next-link" href="background.html"><b>Model and evidence</b><span>The relation, the six-build measurement behind \(\sigma_{\mathrm{cyc}}\), and every quantity defined.</span></a>
   </div>
 </section>
@@ -144,11 +146,12 @@
 </main>
 
 <footer class="site-footer"><div class="wrap">
-  <p>Companion to Hudson, Hunnicutt and Loveless, "Design Strategies for Dynamic Single-Event Effect Testing of Algorithmic Computation," IEEE Trans. Nucl. Sci. (RADECS 2026). IU Center for Reliable and Trusted Electronics.</p>
+  <p>Companion to Hudson, Hunnicutt, Raymond, Lingasubramanian and Loveless, "Design Strategies for Dynamic Single-Event Effect Testing of Algorithmic Computation," IEEE Trans. Nucl. Sci. (RADECS 2026). IU Center for Reliable and Trusted Electronics.</p>
+  <p>Read the <a href="preprint.pdf" target="_blank" rel="noopener">pre-print (PDF)</a> of the companion paper.</p>
 </div></footer>
 
-<script src="assets/model.js?v=20260924-refs"></script>
-<script src="assets/main.js?v=20260924-refs"></script>
+<script src="assets/model.js?v=20260925"></script>
+<script src="assets/main.js?v=20260925"></script>
 <script data-goatcounter="https://isahuds.goatcounter.com/count"
         async src="//gc.zgo.at/count.js"></script>
 </body>

@@ -3,9 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>With recovery time | Dynamic SEE Test Design</title>
+<title>With dead time | Dynamic SEE Test Design</title>
 <meta name="description" content="Charge a dynamic SEE test for the time it spends recovering and waiting to detect interrupts, and see what that does to the share of beam time that counts.">
-<link rel="stylesheet" href="assets/style.css?v=20260924-refs">
+<link rel="stylesheet" href="assets/style.css?v=20260925">
 <script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['$$','$$']]},options:{skipHtmlTags:['script','noscript','style','textarea','pre']}};</script>
 <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 </head>
@@ -16,8 +16,9 @@
 </div></header>
 <nav class="site-nav"><ul>
   <li><a href="index.html">Flux and work cycle</a></li>
-  <li><a href="recovery.html" class="active">With recovery time</a></li>
+  <li><a href="recovery.html" class="active">With dead time</a></li>
   <li><a href="background.html">Model and evidence</a></li>
+  <li><a href="preprint.pdf" target="_blank" rel="noopener">Pre-print</a></li>
 </ul></nav>
 
 <main class="wrap">
@@ -25,16 +26,16 @@
 <section class="card intro">
   <h2>What this page adds</h2>
   <p>The <a href="index.html">first page</a> asks how many attempted cycles come back clean. This
-  page asks how much of the time you book turns into countable exposure, and it needs two more
-  numbers a pilot can supply: the mean time a lost cycle costs the test in recovery, \(\tau\),
-  and the detection latency, the host's wait from a reset to detecting it. The companion paper
-  names these, with \(\sigma_{\mathrm{cyc}}\) and your target \(\theta\), as the three measured
-  inputs and one choice that set a dynamic test's flux and work cycle.</p>
-  <p class="note">Setting \(\tau=0\) returns the first page's answer exactly, so the duty factor
-  builds directly on the published relation (Zimmaro et al., RADECS 2022). It is the test-time counterpart of
-  the availability that system-level guidance computes for a mission from downtime and cross section
-  (Coronetti et al. 2021), and of the detectable share of test time that ESCC 25100 asks to be
-  measured. See <a href="background.html#references">the references</a>.</p>
+  page asks how much of the time you book turns into countable exposure. Each lost cycle also costs
+  <strong>dead time</strong>: beam-on time from the interrupt until the device resumes work, during
+  which the host cannot observe it. Dead time has two parts, and a pilot can measure both: the
+  detection latency, the host's wait to detect the interrupt, and the recovery that follows it. The
+  companion paper names these two measurements, with \(\sigma_{\mathrm{cyc}}\) and your target
+  \(\theta\), as the three measured inputs and one choice that set a dynamic test's flux and work
+  cycle.</p>
+  <p class="note">Setting \(\tau=0\) returns the first page's answer exactly: the published relation
+  (Zimmaro et al., RADECS 2022), in which dead time is free. See
+  <a href="background.html#references">the references</a>.</p>
 </section>
 
 <section class="card">
@@ -51,22 +52,22 @@
       <p class="help">Event-free, beam off.</p>
     </div>
     <div class="field">
-      <label for="inputTau">Recovery time per lost cycle \(\tau\)</label>
+      <label for="inputTau">Recovery time per lost cycle, \(\tau\) as measured</label>
       <div class="inputrow"><input id="inputTau" type="text" inputmode="decimal" value="0.6"><span class="unit">s</span></div>
-      <p class="help">The <strong>mean</strong> from interruption to the resumption of work, including
+      <p class="help">The <strong>mean</strong> from detection to the resumption of work, including
       retries and any host timeout, not the median settle. The campaign measured 0.58 to 1.28 s
-      per lost cycle against a 0.165 s settle. That is recovery alone; the detection latency
-      below is entered separately. A device class matters here: a Linux system-on-chip rebooted by
-      its host takes tens of seconds to minutes (Esquer et al. 2024; Frías-Domínguez et al.
-      2025).</p>
+      per lost cycle against a 0.165 s settle. That is dead time's recovery part; the detection
+      latency below is its other part, entered separately. A device class matters here: a Linux
+      system-on-chip rebooted by its host takes tens of seconds to minutes (Esquer et al. 2024;
+      Frías-Domínguez et al. 2025).</p>
     </div>
     <div class="field">
       <label for="inputTDet">Detection latency per lost cycle</label>
       <div class="inputrow"><input id="inputTDet" type="text" inputmode="decimal" value="0.7"><span class="unit">s</span></div>
-      <p class="help">The host's wait from a reset to detecting it, per lost cycle. \(D\) as the
-      companion paper defines it charges recovery alone; adding this to \(\tau\) charges the wait
-      too. The campaign
-      measured 0.7 to 1.1 s. Enter 0 to see recovery alone.</p>
+      <p class="help">The host's wait from a reset to detecting it, per lost cycle: dead time's other
+      part. By default the test charges only the recovery part of dead time to \(D\); adding this to
+      \(\tau\) charges the detection wait too. The campaign measured 0.7 to 1.1 s. Enter 0 to see
+      recovery charged alone.</p>
     </div>
     <div class="field">
       <label for="inputD">Target duty factor \(D\) (optional)</label>
@@ -92,13 +93,15 @@
     \qquad
     \theta=\frac{D\,(W+\tau)}{W+D\,\tau}$$
   </div>
-  <p class="note">\(D\) is the share of the time spent running cycles and recovering that yields
-  countable exposure, meaning fluence delivered during cycles that survive to report. It charges
-  recovery alone, so it is an upper bound on the share of beam-on time that counts. The host's
-  wait to detect an interrupt and the re-running of cycles that interrupts cut short are beam-on
-  time too. In the companion campaign, adding the measured detection latency to \(\tau\) brought
-  \(D\) within 0.02 to 0.05 of the directly measured share at \(B\le50\). Re-running is not
-  charged at all.</p>
+  <p class="note">\(D\) is the share of the time spent running cycles or in dead time that yields
+  countable exposure, meaning fluence delivered during cycles that survive to report. By default
+  only the recovery part of dead time is charged to \(D\), so it is an upper bound on the share of
+  beam-on time that counts. The host's wait to detect an interrupt is dead time too, and in the
+  companion campaign, adding the measured detection latency to \(\tau\) charged it as well, bringing
+  \(D\) within 0.02 to 0.05 of the directly measured share at \(B\le50\). Re-running the cycles that
+  interrupts cut short is <em>not</em> dead time — the host observes the device throughout a re-run —
+  but a re-run does not begin from a verified state, so it is not counted as a work cycle either, and
+  none of that time is charged.</p>
   <p class="note">The charge a test pays is \((1-\theta)\tau/W\). A short cycle loses a
   correspondingly smaller share of its cycles, so to first order \(W\) drops out and the charge is
   left to \(\tau\). A build already keeping most of its cycles gains more from recovering reliably
@@ -111,48 +114,47 @@
   <h2>A caution on hidden strikes</h2>
   <p class="note">A second strike that lands before the host has detected and recovered from the
   first resets the device again, but opens no new recovery episode. The device's reset counter
-  records it; the host does not. This is the counting loss known from radiation detectors (Knoll
+  records it; the host does not. This is the dead-time counting loss known from radiation detectors (Knoll
   2010), and Zimmaro et al. (TNS 2022) measured it as masking at high flux on a system recovered by an
   external watchdog.</p>
   <p class="note">In the companion campaign, 11 to 13% of the interrupts in the four FRAM builds at
   the reference condition were hidden this way, so their true interrupt rate likely lies 12 to 16%
-  above the host-detected rate. Most of that loss arose while the host was still waiting to detect
-  the first reset, and 2 to 3 points arose during recovery. A shutter closed on detection keeps
-  recovery out of the exposed window (Wilcox et al. 2017; Texas Instruments 2019), so what remains
-  to plan for is the detection latency, the input above.</p>
+  above the host-detected rate. Most of that loss arose during the detection latency, and only 2 to 3
+  points arose during recovery. A shutter closed on detection keeps recovery out of the exposed
+  window (Wilcox et al. 2017; Texas Instruments 2019), so what remains to plan for is the detection
+  latency, the input above.</p>
   <p class="note">Hidden strikes bias a host-detected interrupt rate low, and with it a projected
   mission interrupt rate. They do not bias \(\theta\), \(\sigma_{\mathrm{cyc}}\) or the
-  corruption-event rate, since those are counted on cycles that survived. See
+  corruption-event rate: a hidden strike lands in dead time, after its cycle is already lost. See
   <a href="background.html#pileup">the evidence</a>.</p>
 </section>
 
 <section class="card">
   <h2>What the campaign measured</h2>
-  <p class="note">Six builds at one flux and LET. The two that keep the most cycles are not the two
-  that keep the most test time: each takes about twice as long to recover from a lost cycle as the
-  two builds that pass them. Charged for recovery alone, 34 to 72% of the time spent running
-  cycles and recovering yielded no countable exposure, depending on the build.</p>
+  <p class="note">Six builds at one flux and LET. The two that keep the most cycles, FRAM_B1 and
+  SRAM_B1, rank only third and fourth on duty factor: dead time reorders them. Charged for the
+  recovery part of dead time alone, 34 to 72% of the time spent running cycles and recovering
+  yielded no countable exposure, depending on the build.</p>
   <div class="table-wrap"><table class="validation">
     <thead><tr><th>Build</th><th>\(W\)</th><th>\(\theta\) measured</th><th>\(\tau\) (s)</th><th>\(D\)</th><th>Rank by \(\theta\)</th><th>Rank by \(D\)</th></tr></thead>
     <tbody id="campaignTable"></tbody>
   </table></div>
-  <p class="help">Every build recovered in the same 0.165 s when the automatic path worked. What
-  differs is the tail: an episode that fails to resynchronize costs a fixed timeout of five or ten
-  seconds, the time of thirty to sixty successful recoveries. Five of the six builds share one
-  failure rate near 4%, and SRAM_B1 failed in 16% of episodes. The slowest 5% of episodes carry 23 to
-  69% of each build's recovery time, so failing less often, or waiting less when it fails, is a
-  larger lever than the settle.</p>
+  <p class="help">Most recoveries took the one 0.165 s settle, and most of each build's recovery time
+  went to the recoveries whose first attempt failed: 15 and 22% of recoveries for FRAM_B1 and
+  SRAM_B1, against 6 to 11% for the rest. A failed first attempt costs further attempts or, when
+  resynchronization fails outright, the host's resynchronization timeout. That timeout is the host's
+  own choice, distinct from the detection latency above.</p>
   <h3>Where beam-on time went</h3>
   <div class="table-wrap"><table class="validation">
     <thead><tr><th>Activity</th><th>Share of beam-on time in a call</th></tr></thead>
     <tbody id="timeBudgetTable"></tbody>
   </table></div>
-  <p class="help">A re-run does not begin from a verified state, so it is not counted as a new work
-  cycle. Measured directly over beam-on time, the countable share was 12 to 42%, below every
-  build's \(D\). Adding the measured detection latency, 0.7 to 1.1 s per lost cycle, to \(\tau\)
-  brings \(D\) within 0.02 to 0.05 of that share at \(B\le50\), for example 0.39 against 0.37 for
-  FRAM_B1. At \(B=200\), re-running cut-short cycles took about 40% of beam-on time, and \(D\)
-  charges none of it.</p>
+  <p class="help">Re-running is not dead time, since the host observes the device throughout, but a
+  re-run does not begin from a verified state, so it is not counted as a new work cycle. Measured
+  directly over beam-on time, the countable share was 12 to 42%, below every build's \(D\). Adding
+  the measured detection latency, 0.7 to 1.1 s per lost cycle, to \(\tau\) brings \(D\) within 0.02
+  to 0.05 of that share at \(B\le50\), for example 0.39 against 0.37 for FRAM_B1. At \(B=200\),
+  re-running cut-short cycles took about 40% of beam-on time, none of it charged to \(D\).</p>
 </section>
 
 <section class="card">
@@ -166,11 +168,12 @@
 </main>
 
 <footer class="site-footer"><div class="wrap">
-  <p>Companion to Hudson, Hunnicutt and Loveless, "Design Strategies for Dynamic Single-Event Effect Testing of Algorithmic Computation," IEEE Trans. Nucl. Sci. (RADECS 2026). IU Center for Reliable and Trusted Electronics.</p>
+  <p>Companion to Hudson, Hunnicutt, Raymond, Lingasubramanian and Loveless, "Design Strategies for Dynamic Single-Event Effect Testing of Algorithmic Computation," IEEE Trans. Nucl. Sci. (RADECS 2026). IU Center for Reliable and Trusted Electronics.</p>
+  <p>Read the <a href="preprint.pdf" target="_blank" rel="noopener">pre-print (PDF)</a> of the companion paper.</p>
 </div></footer>
 
-<script src="assets/model.js?v=20260924-refs"></script>
-<script src="assets/recovery.js?v=20260924-refs"></script>
+<script src="assets/model.js?v=20260925"></script>
+<script src="assets/recovery.js?v=20260925"></script>
 <script data-goatcounter="https://isahuds.goatcounter.com/count"
         async src="//gc.zgo.at/count.js"></script>
 </body>

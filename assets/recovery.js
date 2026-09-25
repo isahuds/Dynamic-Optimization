@@ -32,10 +32,10 @@
     var charge = S.recoveryCharge(theta, W, tau);
     var flux = S.fluxForW(theta, sigma, W);
     var dutyHtml =
-      S.metric("Duty factor at your θ", D.toFixed(3), "", "recovery charged, as the paper defines D", true) +
+      S.metric("Duty factor at your θ", D.toFixed(3), "", "the recovery part of dead time charged, as the paper defines D", true) +
       S.metric("With detection latency charged", Dlat.toFixed(3), "", "τ + " + tDet + " s per lost cycle; closer to what beam-on time returns", true) +
       S.metric("Cycle and recovery time buying no exposure", pct(1 - D), "", "1 − D; beam-on time also holds the detection wait and re-runs") +
-      S.metric("Recovery charge (1−θ)τ/W", charge.toFixed(3), "", charge > 0.5 ? "about as long recovering as running cycles" : "recovery per cycle attempted, in cycle lengths") +
+      S.metric("Dead-time charge (1−θ)τ/W", charge.toFixed(3), "", charge > 0.5 ? "about as long recovering as running cycles" : "recovery per cycle attempted, in cycle lengths") +
       S.metric("Flux for your W at θ", S.sci(flux), " cm⁻² s⁻¹", "from the first page's rule") +
       S.metric("Time to Φ, beam on", S.dur(S.wallClockTime(flux, fluence)), "", "at most " + pct(D) + " of cycle and recovery time countable");
     var dutyVerdict = "";

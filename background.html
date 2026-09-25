@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Model and evidence | Dynamic SEE Test Design</title>
 <meta name="description" content="The flux-selection relation, the heavy-ion measurement that tests it, the recovery extension, a caution on hidden strikes, and every quantity defined.">
-<link rel="stylesheet" href="assets/style.css?v=20260924-refs">
+<link rel="stylesheet" href="assets/style.css?v=20260925">
 <script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['$$','$$']]},options:{skipHtmlTags:['script','noscript','style','textarea','pre']}};</script>
 <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 </head>
@@ -16,8 +16,9 @@
 </div></header>
 <nav class="site-nav"><ul>
   <li><a href="index.html">Flux and work cycle</a></li>
-  <li><a href="recovery.html">With recovery time</a></li>
+  <li><a href="recovery.html">With dead time</a></li>
   <li><a href="background.html" class="active">Model and evidence</a></li>
+  <li><a href="preprint.pdf" target="_blank" rel="noopener">Pre-print</a></li>
 </ul></nav>
 
 <main class="wrap">
@@ -39,7 +40,7 @@
   interrupts the work cycle, in systems whose application sets that cycle. The companion paper
   builds on it in three directions. It varies the work cycle deliberately, from 20 to 814 ms, on
   heavy ions at component level. It counts the surviving cycles directly. And it charges the test
-  for the time it spends recovering.</p>
+  for the dead time each interrupt costs.</p>
   <p>The relation sits alongside established flux guidance, which bounds flux to keep a measurement
   free of artifacts (Buchner et al. 2002; Berg et al. 2009; Quinn 2014) or to avoid overwhelming
   error-correction logic (Zoutendyk et al. 1987; Allen et al. 2010, 2011). ESCC 25100 asks that
@@ -152,7 +153,9 @@
   the fault site behind each corruption event. Of the 34 events in
   the two SRAM builds, 16 are reproduced by a single flip in an input sample, against 1 of the 36
   events of FRAM_B1_Throttled on the same device, so the signature tracks storage rather than the
-  device (Fisher exact, \(p<10^{-4}\)). Of the 61 events in the FRAM builds, 84% are not reproduced
+  device (Fisher exact, \(p<10^{-4}\)). A match at the output sample cannot be separated from a flip
+  in a register or in transfer, so the comparison uses input samples only. Of the 61 events in the
+  FRAM builds, 84% are not reproduced
   by any simulated flip, against 26% of the SRAM events, and 30 of the 35 events that are reproduced
   sit at a stored sample rather than in the arithmetic.</p>
   <p>This agrees with what is known of FRAM. Moving working data into FRAM has been reported to
@@ -170,17 +173,18 @@
 </section>
 
 <section class="card" id="recovery">
-  <h2>Recovery time in the flux choice</h2>
-  <p>The clean-cycle fraction counts only in-cycle time, but each lost cycle also costs a recovery,
-  during which no work cycle runs and the device is unobservable. Let \(\tau\) be the mean recovery
-  time per lost cycle. The duty factor, the share of the time spent running cycles and recovering
-  that yields countable exposure, is the surviving cycle time over the sum of cycle time and the
-  recovery expected per cycle:</p>
+  <h2>Dead time in the flux choice</h2>
+  <p>The clean-cycle fraction counts only in-cycle time, but each lost cycle also costs
+  <strong>dead time</strong>: the beam-on time from the interrupt until the device resumes work, in
+  which the host cannot observe it. Dead time has two parts, the detection latency and the recovery
+  that follows it. Let \(\tau\) be the mean dead time a lost cycle adds beyond its own \(W\); here it
+  is measured as the recovery part. The duty factor, the share of the time spent running cycles or in
+  dead time that yields countable exposure, is the surviving cycle time over the sum of cycle time
+  and the dead time expected per cycle:</p>
   <div class="formula-box">$$D=\frac{\theta W}{W+(1-\theta)\tau}\qquad\qquad \theta=\frac{D\,(W+\tau)}{W+D\,\tau}$$</div>
-  <p>Setting \(\tau=0\) returns \(D=\theta\), so the duty factor builds directly on the published
-  relation. \(D\) is the test-time counterpart of the availability that system-level guidance
-  computes for a mission from downtime and cross section (Coronetti et al., TNS 2021). ESCC 25100
-  asks that a comparable active-time share be measured and applied to a cross section.</p>
+  <p>Setting \(\tau=0\) returns \(D=\theta\), the published relation, in which dead time is free. A
+  campaign budgets beam time rather than cycles, so a design target can be set on \(D\) directly, and
+  the inverted form above turns that target back into the clean-cycle fraction it requires.</p>
   <p>How large \(\tau\) is depends on the device class. Many microcontrollers that boot from on-chip
   non-volatile memory reset themselves in milliseconds when an internal reset path is available
   (Quinn et al. 2014; Texas Instruments 2019; Zimmaro et al., TNS 2022), while systems-on-chip that run
@@ -188,36 +192,32 @@
   (Esquer et al. 2024; Frías-Domínguez et al. 2025).</p>
   <p>Charged with each build's own \(\theta\) and \(\tau\), 34 to 72% of the time spent running
   cycles and recovering yielded no countable exposure, depending on the build.</p>
-  <p>The charge a build pays is \((1-\theta)\tau/W\). A short cycle carries a high ratio of
-  recovery time to cycle time, but it also loses a correspondingly smaller share of its cycles, and
-  the two effects cancel to first order. While few cycles are lost, \(1-\theta\) rises nearly in
-  proportion to \(W\), so the work-cycle time drops out and the charge is left to \(\tau\). FRAM_B1
-  runs a 20 ms cycle and takes 1.17 s to recover from a loss, about sixty cycle-lengths, but loses
-  only 1.6% of its cycles, and 1.6% of sixty is close to one, so it spends about as long recovering
-  as running cycles. Its clean-cycle fraction is 0.98 while its duty factor is only 0.51. A build with
-  forty times the work cycle and the same recovery time would pay about 75% of that charge at this
-  flux.</p>
-  <p>The two builds that keep the most cycles, FRAM_B1 and SRAM_B1, rank third and fourth on duty
-  factor. Each takes about twice as long to recover from a lost cycle, 1.17 and 1.26 s, as the two
-  builds that pass them, 0.58 and 0.59 s. The directly measured countable share reproduces that same
-  order with no model involved.</p>
+  <p>Charging dead time changes which build makes the best use of the beam. FRAM_B1 and SRAM_B1 keep
+  the most cycles but rank only third and fourth on duty factor, behind FRAM_B1_Throttled and
+  FRAM_B50. Measured directly, as the time in cycles that returned a clean result over beam-on time
+  in a call, the countable share follows the same order with no model involved, at 12 to 42%. FRAM_B1
+  loses only 1.6% of its 20 ms cycles, but each loss costs 1.17 s of recovery, about sixty
+  cycle-lengths: by the host's own clock it spent 35% of its beam-on time running cycles and 34%
+  recovering, so a clean-cycle fraction of 0.98 yields a duty factor of only 0.51. FRAM_B1_Throttled
+  and FRAM_B50 lose more of their cycles, 3.6 and 12.9%, but each loss costs them about half as much
+  recovery: they spent only 19 and 15% of their beam-on time recovering, against 43 and 42% running
+  cycles, and keep duty factors of 0.66 and 0.65. In the equation, the dead time charged per unit of
+  cycle time is \((1-\theta)\tau/W\), and while few cycles are lost, \(1-\theta\) grows in proportion
+  to \(W\), so the cycle length drops out and \(\tau\) sets how much test time is lost. For a build
+  like FRAM_B1, a shorter cycle gains little, while less dead time gains directly.</p>
   <p>\(\tau\) is measured, as the mean episode duration times the episodes a lost cycle carried,
-  and runs 0.58 to 1.28 s here. Every build settled in the same 0.165 s when the automatic path
-  worked, so \(\tau\) is set by the tail of episodes that failed to resynchronize. Each failure cost
-  a fixed timeout of five or ten seconds, the time of thirty to sixty successful recoveries. Five of
-  the six builds share one failure rate near 4%. SRAM_B1 failed in 16% of episodes, and
-  SRAM_Mixed_B200 carried 2.5 episodes per lost cycle against at most 1.6 elsewhere. The campaign
-  cannot separate either build from its documented counter corruption as the cause. The slowest 5%
-  of episodes carry 23 to 69% of each build's recovery time, so reducing how often recovery fails,
-  or how long the host waits when it does, is a larger lever than the settle.</p>
+  and runs 0.58 to 1.28 s here. Most recoveries took the one 0.165 s settle, and most of the recovery
+  time went to recoveries whose first attempt failed. That happened in 15 and 22% of recoveries for
+  FRAM_B1 and SRAM_B1, against 6 to 11% for the rest. A failed first attempt costs further attempts
+  or, when resynchronization fails outright, the host's resynchronization timeout, which is the
+  host's own choice and distinct from the detection latency below.</p>
   <p>Scored against the next work cycle the device delivered, automatic recovery restored function
   in 95.3% of cases and a manual reset in 96.4%, a difference of one point with a 95% interval of −5
   to +3 points. The automatic path kept the beam on. For the build swept across LET, pausing the
   beam at every detection for the median 84.6 s manual reset would have delivered
   \(1.45\times10^{7}\) cm⁻² instead of the \(2.56\times10^{8}\) cm⁻² actually accumulated, a factor
-  of 18 less exposure. A campaign that pauses the beam to recover does not escape the charge, since
-  \(\tau\) then moves from its beam-on budget to its facility budget: an escalated recovery cost a
-  mean of 93.7 s against that median of 84.6 s.</p>
+  of 18 less exposure. Pausing the beam to recover does not escape the charge, which moves from
+  beam-on time to facility time.</p>
   <h3>Where the rest of the beam-on time went</h3>
   <p>Recovery is not the only time a call spends outside its work cycles. Share of beam-on time in a
   call, across the six builds:</p>
@@ -225,40 +225,41 @@
     <thead><tr><th>Activity</th><th>Share of beam-on time in a call</th></tr></thead>
     <tbody id="timeBudgetTable"></tbody>
   </table></div>
-  <p>A re-run does not begin from a verified state, so it is not counted as a new work cycle.
-  \(D\) charges recovery alone, so it is an upper bound on the countable share. Measured directly,
-  as the time in cycles that returned a clean result over beam-on time in a call, that share is 12
-  to 42%, below \(D\) for every build, because \(D\) charges neither the host's wait to detect an
-  interrupt nor the re-running of cut-short cycles. Adding the measured detection latency, 0.7 to
-  1.1 s per lost cycle, to \(\tau\) brings \(D\) within 0.02 to 0.05 of the measured share at
+  <p>Re-running the cycles that interrupts cut short is <em>not</em> dead time, since the host
+  observes the device throughout; but a re-run does not begin from a verified state, so it is not
+  counted as a new work cycle either. By default only the recovery part of dead time is charged to
+  \(D\), so it is an upper bound on the countable share. Measured directly, as the time in cycles
+  that returned a clean result over beam-on time in a call, that share is 12 to 42%, below \(D\) for
+  every build, because \(D\) leaves out both the host's wait to detect an interrupt and the
+  re-running of cut-short cycles. Adding the measured detection latency, 0.7 to 1.1 s per lost cycle,
+  to \(\tau\) charges that wait too, bringing \(D\) within 0.02 to 0.05 of the measured share at
   \(B\le50\), for example 0.39 against 0.37 for FRAM_B1.</p>
 </section>
 
 <section class="card" id="pileup">
   <h2>A caution on hidden strikes</h2>
-  <p>Recovering a device under beam raises a question of counting. If a second strike lands before
-  the host has detected and recovered from the first, the device resets again but no new recovery
-  episode opens. This is the counting loss known from radiation detectors (Knoll 2010). Zimmaro et
-  al. (TNS 2022) measured it on a radiation monitoring system recovered by an external watchdog, where a
-  counted cross section fell by a factor of 3.76 as flux rose by a factor of 10.5.</p>
+  <p>Dead time also raises a question of counting. If a second strike lands before the host has
+  detected and recovered from the first, the device resets again but no new recovery episode opens.
+  This is the dead-time counting loss known from radiation detectors (Knoll 2010). Zimmaro et al. (TNS 2022)
+  measured it on a radiation monitoring system recovered by an external watchdog, where a counted
+  cross section fell by a factor of 3.76 as flux rose by a factor of 10.5.</p>
   <p>In the companion campaign, the device's reset counter records these hidden resets, along with
   repeated resets that follow a single event, so the true interrupt rate lies between the host's
   count and the counter's. At the reference condition, 11 to 13% of the interrupts in the four FRAM
   builds were hidden this way, so their true interrupt rate likely lies 12 to 16% above the
-  host-detected rate. The estimate holds on average; allowing for its uncertainty, the hidden share
-  could lie anywhere from 6 to 17%.</p>
-  <p>Most of that loss arose while the host was still waiting to detect the first reset, and 2 to 3
-  points arose during recovery. Closing a shutter on detection keeps recovery out of the exposed
-  window, as Wilcox et al. (2017) did with a board-mounted shutter whose closed time was subtracted
-  from the delivered fluence, and as Texas Instruments (2019) did to keep a second strike out of the
-  post-reset boot. The detection latency, set here by the host's own wait and timeouts, is the
-  window that remains.</p>
+  host-detected rate and 7 to 10% below the reset-counter rate. The estimate holds on average;
+  allowing for its uncertainty, the hidden share could lie anywhere from 6 to 17%.</p>
+  <p>Most of that loss arose during the detection latency, and 2 to 3 points arose during recovery.
+  Closing a shutter on detection keeps recovery out of the exposed window, as Wilcox et al. (2017)
+  did with a board-mounted shutter whose closed time was subtracted from the delivered fluence, and
+  as Texas Instruments (2019) did to keep a second strike out of the post-reset boot. The detection
+  latency, set here by the host's own wait and timeouts, is the window that remains.</p>
   <p class="note">What this means for a design: hidden strikes bias a host-detected interrupt rate
   low, and with it a projected mission interrupt rate. They do not bias the clean-cycle fraction,
-  \(\sigma_{\mathrm{cyc}}\) or the corruption-event rate, since those are counted on cycles that
-  survived. Three measured inputs and one choice set a dynamic test's flux and work cycle: the
-  lost-cycle cross section from a pilot, the recovery time per lost cycle, the detection latency,
-  and the targeted share of surviving cycles.</p>
+  \(\sigma_{\mathrm{cyc}}\) or the corruption-event rate: a hidden strike lands in dead time, after
+  its cycle is already lost. Three measured inputs and one choice set a dynamic test's flux and work
+  cycle: the lost-cycle cross section from a pilot, the recovery time and detection latency that make
+  up dead time per lost cycle, and the targeted share of surviving cycles.</p>
 </section>
 
 <section class="card" id="quantities">
@@ -272,25 +273,27 @@
       <tr><td>In-cycle time</td><td>The part of beam-on time spent inside work cycles.</td><td>§III-B</td></tr>
       <tr><td>Recovery time</td><td>The part of beam-on time spent restoring the device after an interruption. Recoveries that paused the beam are counted separately.</td><td>§III-A</td></tr>
       <tr><td>Detection latency</td><td>The host's wait to detect an interrupt, from a reset to its detection, in which a further reset opens no new recovery episode.</td><td>§IV-B</td></tr>
+      <tr><td>Dead time</td><td>Beam-on time from an interrupt until the device resumes work, in which the host cannot observe the device; the detection latency plus the recovery time.</td><td>§IV-B</td></tr>
       <tr><td>Countable exposure</td><td>Fluence delivered during work cycles that survive.</td><td>§IV-B</td></tr>
       <tr><td>\(W\)</td><td>Work-cycle time, from input reception to output transmission, measured event-free.</td><td>§II-B</td></tr>
       <tr><td>\(\theta\)</td><td>Clean-cycle fraction, the share of attempted work cycles that survive; \(1-\theta\) is the share lost.</td><td>§IV-A</td></tr>
       <tr><td>\(\phi\)</td><td>Flux, cm⁻² s⁻¹.</td><td>§II</td></tr>
-      <tr><td>\(\sigma_{\mathrm{cyc}}\)</td><td>Cross section for a lost work cycle, cm²: an attempted cycle in which a host-detected interrupt occurred, counted once however many it carried, over the in-cycle time of attempted cycles. A retried execution is not an attempt. \(\sigma_{\mathrm{cyc}}\phi\) is the lost-cycle rate per second of in-cycle time.</td><td>Table II, §IV-A</td></tr>
-      <tr><td>\(\sigma_{\mathrm{FI}}\)</td><td>Cross section for functional interrupts, cm²: one per increment of the device's reset counter, whether or not the host detected it, plus one for each escalated recovery that ended its call before the counter was read again (16 at the reference condition, under 2% of the count), over beam-on time while the host ran a call.</td><td>Table II, §III-B</td></tr>
-      <tr><td>\(\sigma_{\mathrm{det}}\)</td><td>Cross section for host-detected interrupts, cm²: one per detection in the host's recovery record, each opening one recovery episode, over the same beam-on exposure.</td><td>Table II, §III-A</td></tr>
-      <tr><td>Corruption event</td><td>One or more contiguous counted errors in a single call, kept only if no recovery began in the cycle that delivered it. Its cross section is over the in-cycle time of attempted cycles scaled by \(\theta\), the exposure of the cycles that returned a result.</td><td>§II-D, §III-B</td></tr>
-      <tr><td>\(\tau\)</td><td>Mean recovery time per lost cycle.</td><td>§IV-B</td></tr>
-      <tr><td>\(D\)</td><td>Duty factor, the share of the time spent running cycles and recovering that yields countable exposure.</td><td>§IV-B</td></tr>
+      <tr><td>\(\sigma_{\mathrm{cyc}}\)</td><td>Cross section for a lost work cycle, cm²: an attempted cycle in which a host-detected interrupt occurred, counted once however many it carried, over the in-cycle time of attempted cycles. A retried execution is not an attempt. \(\sigma_{\mathrm{cyc}}\phi\) is the lost-cycle rate per second of in-cycle time.</td><td>Table III, §IV-A</td></tr>
+      <tr><td>\(\sigma_{\mathrm{FI}}\)</td><td>Cross section for functional interrupts (a SEFI or accumulated SEUs), cm²: one per increment of the device's reset counter, whether or not the host detected it, plus one for each escalated recovery that ended its call before the counter was read again (16 at the reference condition, under 2% of the count), over beam-on time while the host ran a call.</td><td>Table III, §III-B</td></tr>
+      <tr><td>\(\sigma_{\mathrm{det}}\)</td><td>Cross section for host-detected interrupts, cm²: one per detection in the host's recovery record, each opening one recovery episode, over the same beam-on exposure.</td><td>Table III, §III-A</td></tr>
+      <tr><td>Corruption event</td><td>One or more contiguous counted errors (one or more SEUs) in a single call, kept only if no recovery began in the cycle that delivered it. Its cross section is over the in-cycle time of attempted cycles scaled by \(\theta\), the exposure of the cycles that returned a result.</td><td>§II-D, §III-B</td></tr>
+      <tr><td>\(\tau\)</td><td>Mean dead time a lost cycle adds beyond its own \(W\); measured here as the recovery time.</td><td>§IV-B</td></tr>
+      <tr><td>\(D\)</td><td>Duty factor, the share of the time spent running cycles or in dead time that yields countable exposure.</td><td>§IV-B</td></tr>
       <tr><td>\(\Phi\), \(T\)</td><td>Target fluence and the wall-clock time to reach it, \(T=\Phi/\phi\). Site-only conveniences.</td><td>this site</td></tr>
     </tbody>
   </table></div>
-  <p class="help">The paper reports two primary quantities, the functional interrupt and the
-  corruption event, and names each by its effect rather than its cause. A counted error is the step
-  between: a corrupted result that passed both screening steps, which feeds corruption events only.
-  These are the quantities conventionally reported as SEFI and SEU counts, which are defined by
-  attribution to one ionizing particle (JEDEC JESD57A; Koga et al. 1997); this campaign cannot
-  establish that attribution, so the site follows the paper's names. Each rate is an operational
+  <p class="help">The paper reports two primary quantities, the functional interrupt (a SEFI or
+  accumulated SEUs) and the corruption event (one or more SEUs), and names each by its effect rather
+  than its cause. A counted error is the step between: a corrupted result that passed both screening
+  steps, which feeds corruption events only. SEFI and SEU are defined by attribution to one ionizing
+  particle (JEDEC JESD57A; Koga et al. 1997); this campaign cannot establish that attribution, so the
+  site follows the paper's names rather than reporting SEFI or SEU counts or cross sections directly.
+  Each rate is an operational
   cross section, after the component-level and system-level distinction of Coronetti et al. (2021).
   Positive counts carry exact 95% Poisson intervals (Garwood 1936; Ricker 1937), and a zero count
   the one-sided 95% upper limit 2.996/Φ.</p>
@@ -310,7 +313,7 @@
   <h2>References</h2>
   <p class="note">Every work below is cited in the companion paper, whose bibliography these entries follow. Each line says what the site draws from it.</p>
   <ul class="refs">
-    <li>I. Hudson, H. Hunnicutt, T. D. Loveless, "Design strategies for dynamic single-event effect testing of algorithmic computation," <em>IEEE Trans. Nucl. Sci.</em> (RADECS 2026). The companion paper; every number on this site traces to it.</li>
+    <li>I. Hudson, H. Hunnicutt, L. Raymond, K. Lingasubramanian, T. D. Loveless, "Design strategies for dynamic single-event effect testing of algorithmic computation," <em>IEEE Trans. Nucl. Sci.</em> (RADECS 2026). The companion paper; every number on this site traces to it.</li>
   </ul>
   <h3>The relation and its extensions</h3>
   <ul class="refs">
@@ -367,10 +370,11 @@
 </main>
 
 <footer class="site-footer"><div class="wrap">
-  <p>Companion to Hudson, Hunnicutt and Loveless, "Design Strategies for Dynamic Single-Event Effect Testing of Algorithmic Computation," IEEE Trans. Nucl. Sci. (RADECS 2026). IU Center for Reliable and Trusted Electronics.</p>
+  <p>Companion to Hudson, Hunnicutt, Raymond, Lingasubramanian and Loveless, "Design Strategies for Dynamic Single-Event Effect Testing of Algorithmic Computation," IEEE Trans. Nucl. Sci. (RADECS 2026). IU Center for Reliable and Trusted Electronics.</p>
+  <p>Read the <a href="preprint.pdf" target="_blank" rel="noopener">pre-print (PDF)</a> of the companion paper.</p>
 </div></footer>
 
-<script src="assets/model.js?v=20260924-refs"></script>
+<script src="assets/model.js?v=20260925"></script>
 <script>
 (function () {
   "use strict";

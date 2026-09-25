@@ -1,13 +1,14 @@
 # Dynamic SEE Test Design
 
-Companion site for Hudson, Hunnicutt and Loveless, "Design Strategies for Dynamic
-Single-Event Effect Testing of Algorithmic Computation," IEEE Trans. Nucl. Sci. (RADECS 2026).
+Companion site for Hudson, Hunnicutt, Raymond, Lingasubramanian and Loveless, "Design Strategies
+for Dynamic Single-Event Effect Testing of Algorithmic Computation," IEEE Trans. Nucl. Sci.
+(RADECS 2026).
 A designer plugs in a lost-cycle cross section, a work-cycle time and a target share of
 surviving cycles, and reads off the flux to run or the longest cycle a flux allows. A second
-page charges the test for recovery time and, optionally, detection latency.
+page charges the test for dead time: recovery and, optionally, detection latency.
 
-Built against the PI's Overleaf copy `testing-opt(30).tex` of 2026-09-24, two rounds past
-package `TNS_REMEDIATION_2026-09-23-v83`. If the site and the paper disagree, the paper wins.
+Built against `testing-opt.tex`, package `TNS_FINAL_2026-09-25-v86`, the final copy. If the site
+and the paper disagree, the paper wins.
 
 ## The relation
 
@@ -60,14 +61,14 @@ longest W    = 135 ms          theta 0.90, phi 5e4; three builds under, FRAM_B50
 at 2e5       = 8% of the longest cycles survive, 94% of the shortest
 form tests   = G2 6.4, df 5, p 0.27 (shared sigma_cyc); Weibull shape 0.98 [0.92, 1.04]
 retries      = 1 to 2% of beam-on at B=1, 29 to 30% at B=200; counting them raises sigma_cyc 9%
-tau          = 0.58 to 1.28 s  mean per lost cycle; settle 0.165 s for every build
-D            = 0.28 to 0.66    34 to 72% of cycle-plus-recovery time uncounted (recovery alone)
-charge       = (1-theta) tau / W; W drops out to first order; 40x the cycle pays about 75%
+tau          = 0.58 to 1.28 s  dead time's recovery part, per lost cycle; settle 0.165 s for every build
+D            = 0.28 to 0.66    34 to 72% of cycle-plus-recovery time uncounted (recovery part of dead time alone)
+charge       = (1-theta) tau / W; W drops out to first order
 beam-on      = 24 to 43% in cycles; recovery 14 to 36%; detection wait up to 29%;
                re-runs 1 to 2% at B=1, about 40% at B=200; measured countable share 12 to 42%
 D + latency  = within 0.02 to 0.05 of the measured share at B<=50 (0.7 to 1.1 s per lost cycle)
-recovery     = automatic 95.3%, manual 96.4% (difference -5 to +3 points); slowest 5% of
-               episodes carry 23 to 69% of recovery time; LET sweep kept 18x the exposure
+recovery     = automatic 95.3%, manual 96.4% (difference -5 to +3 points); first-attempt
+               failure 15% (FRAM_B1), 22% (SRAM_B1), 6 to 11% elsewhere; LET sweep kept 18x the exposure
 hidden       = 11 to 13% (four FRAM builds; 6 to 17% with uncertainty), 2 to 3 points during recovery
 storage sig. = 16 of 34 SRAM events vs 1 of 36 FRAM events, same device (Fisher p<1e-4)
 corruption   = 1.09e-6 to 1.04e-5 cm^2 on clean-cycle exposure, a factor of 9.5
@@ -75,7 +76,8 @@ corruption   = 1.09e-6 to 1.04e-5 cm^2 on clean-cycle exposure, a factor of 9.5
 
 Source of record: `~/Documents/RADECS-26/analysis/` (`k_direct_fit_v1.json`,
 `survival_measurement_v3.csv`, `duty_factor_v3.csv`, `corruption_cross_sections_clean_cycle_v1.json`,
-`call_time_budget_v1.json`, `storm_filter_impact_v2.json`) and `testing-opt(30).tex`.
+`call_time_budget_v1.json`, `storm_filter_impact_v2.json`) and `testing-opt.tex`, package
+`TNS_FINAL_2026-09-25-v86`.
 
 ## Local verification
 
@@ -106,7 +108,13 @@ charged; the slider moves in whole percent, so the page cannot reach FRAM_B1's e
   implemented: the corruption-event rate on clean-cycle exposure (9.5-fold) with Fig. 2 v18, the
   beam-on time budget and what the duty factor leaves out, and the storm census with each build's
   own host timeouts (a tenth to an eighth hidden, the corrected phase figure).
-- `UPDATE_PLAN_2026-09-24.md`: the alignment with `testing-opt(30).tex` that this release (v6)
-  implements: hidden strikes reduced to the paper's caution (estimator, phase split and figure
+- `UPDATE_PLAN_2026-09-24.md`: the alignment with `testing-opt(30).tex` that release v6
+  implemented: hidden strikes reduced to the paper's caution (estimator, phase split and figure
   removed), detection latency charged in the duty factor, Fig. 4 and the worked comparison added,
   Fig. 3 v2, sigma_det printed, "-fold" retired, and the numbers the paper cut taken off the site.
+- `UPDATE_PLAN_2026-09-25.md`: the alignment with `testing-opt.tex` (v86, the final copy) that this
+  release (v7) implements: dead time named as the beam-on time in which the host cannot observe the
+  device, with the detection latency and recovery as its two parts; the duty factor's definition and
+  every "charges" sentence updated so the test, not D, does the charging; the five-author byline; the
+  SEFI/SEU tie added to the quantities glossary; and the 23-to-69%, 93.7 s and 75%-charge figures the
+  paper cut taken off the site.
